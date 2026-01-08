@@ -6,7 +6,7 @@ import math
 import sys
 import os
 
-target_dir = os.path.abspath('../common')
+target_dir = os.path.abspath('../../common')
 sys.path.append(target_dir)
 from progress import update_progress, process_file_with_progress
 
@@ -141,7 +141,7 @@ def main():
     max_networks = 3
 
     #Create progress bar for parsing the file and generate the connection list as we parse each point
-    process_file_with_progress('input2.txt', line_processor=generate_connection_list, sleep_per_line=0.0)
+    process_file_with_progress('../misc/input2.txt', line_processor=generate_connection_list, sleep_per_line=0.0)
 
     #Print info on our connections
     print(f"Max number of connections: {final_num_conns}")

@@ -7,7 +7,7 @@ import math
 import sys
 import os
 
-target_dir = os.path.abspath('../common')
+target_dir = os.path.abspath('../../common')
 sys.path.append(target_dir)
 from progress import process_file_with_progress
 
@@ -187,7 +187,7 @@ def main():
     global network
 
     #Create progress bar for parsing the file and generate the connection list as we parse each point
-    process_file_with_progress('input2.txt', line_processor=build_network, sleep_per_line=0.0)
+    process_file_with_progress('../misc/input2.txt', line_processor=build_network, sleep_per_line=0.0)
 
     #Print info on our connections
     for i in range(len(connections)):
