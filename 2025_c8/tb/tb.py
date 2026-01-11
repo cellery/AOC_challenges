@@ -26,6 +26,7 @@ from tb_helpers import clog2, decode_packed_struct
 #TODO - Add randomization for test parameters
 ASSERTS_ENABLED = 1 #Global enable for all asserts for test case
 CONN_ASSERTS = 1
+SORT_ASSERTS = 1
 TEST_STIMULUS = "../misc/test_stimulus_001" #If test stimulus folder is not found then all stimulus will be randomly generated
 NUM_POINTS = 20
 NUM_CONNS = 10
@@ -110,6 +111,7 @@ class ConnChecker:
         self.dut = dut
         self.clk = clk
         self.rst_n = rst_n
+        self.sort_status = Status.IDLE
 
         self.cfile = open(cfile, 'r')
         self.sfile = open(sfile, 'r')
@@ -133,10 +135,39 @@ class ConnChecker:
                     assert int(conn_struct["pointa"],2) == int(pointa)
                     assert int(conn_struct["pointb"],2) == int(pointb)
                 else:
-                    self.cfile.close()
                     self.sfile.close()
                     break
                 line = self.cfile.readline().strip()
+
+    async def check_sort(self):
+        self.sort_status = Status.RUNNING
+        #Wait for distance calculator to finish
+        while not self.dut.dist_calc_i.done.value :
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+        #Now wait until we stop seeing data coming out of the sorter block
+        while self.dut.ins_sorter_i.points_vld.value :
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+        line_ind = 0
+        line = self.sfile.readline().strip()
+        while line :
+            dist, pointa, pointb = re.sub(r"\(|\)|\s", "", line).split(",")
+            conn_struct_mapping = [("pointb",clog2(int(self.dut.NUM_POINTS.value))), ("pointa",clog2(int(self.dut.NUM_POINTS.value))), ("distance", (int(self.dut.DIM_W.value)+1)*2+2)]
+            conn_path = self.dut.ins_sorter_i.sort_node_loop[line_ind].first_node.node.conn_cur if line_ind == 0 else self.dut.ins_sorter_i.sort_node_loop[line_ind].next_nodes.node.conn_cur
+            conn_struct = decode_packed_struct(conn_path.value, conn_struct_mapping)
+            assert int(conn_struct["distance"],2) == int(dist)
+            assert int(conn_struct["pointa"],2) == int(pointa)
+            assert int(conn_struct["pointb"],2) == int(pointb)
+
+            line = self.sfile.readline().strip()
+            line_ind += 1
+
+        self.sfile.close()
+        self.sort_status = Status.DONE
+                
 
 @cocotb.test()
 async def aoc_2025_chal8(dut):
@@ -164,9 +195,13 @@ async def aoc_2025_chal8(dut):
     point_o = PointOrchestrator(points_file, dut, dut.clk, dut.rst_n)
     point_o.reset()
 
+    #Connection checker verifies all generated connections match generated list from sw test
     if ASSERTS_ENABLED and CONN_ASSERTS:
         conn_checker = ConnChecker(conns_file, sorted_file, dut, dut.clk, dut.rst_n)
         conn_checker_thread = cocotb.start_soon(conn_checker.check_conn())
+
+    if ASSERTS_ENABLED and SORT_ASSERTS:
+        sort_checker_thread = cocotb.start_soon(conn_checker.check_sort())
 
     # Reset pulse
     dut.rst_n.value = 0
@@ -178,5 +213,8 @@ async def aoc_2025_chal8(dut):
 
     while (point_o.status != Status.DONE):
         await point_o.write_point()
+
+    while (conn_checker.sort_status != Status.DONE):
+        await sort_checker_thread
 
     cocotb.log.info("cocotb finished")
