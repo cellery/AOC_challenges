@@ -17,33 +17,33 @@ module point_ntwrk #(
 
     localparam MAX_NTWRKS = $clog2(NUM_POINTS/2);
 
-    logic [$clog2(NUM_POINTS)-1:0] raddrs [2];
-    logic                          rens [2];
-    logic [$clog2(MAX_NTWRKS)-1:0] rdatas [2];
+    logic [$clog2(NUM_POINTS)-1:0]   raddrs [2];
+    logic                            rens [2];
+    logic [$clog2(NUM_POINTS/2)-1:0] rdatas [2];
     assign raddrs = '{pointa_in, pointb_in};
     assign rens   = '{points_vld, points_vld};
 
-    //logic [$clog2(NUM_POINTS)-1:0] waddrs [2];
-    //logic                          wens [2];
-    //logic [$clog2(MAX_NTWRKS)-1:0] wdatas [2];
-//
-    //mdpram #(
-    //    .DEPTH(NUM_POINTS),
-    //    .WIDTH($clog2(MAX_NTWRKS)),
-    //    .RD_LAT(1),
-    //    .NUM_RD(2),
-    //    .NUM_WR(2)
-    //) point_ntwrk_lut (
-    //    .clk   (clk),
-    //    .rst_n (rst_n),
-//
-    //    .raddr (raddrs),
-    //    .ren   (rens),
-    //    .rdata (rdatas),
-//
-    //    .waddr (waddrs),
-    //    .wen   (wens),
-    //    .wdata (wdatas)
-    //);
+    logic [$clog2(NUM_POINTS)-1:0]   waddrs [2];
+    logic                            wens [2];
+    logic [$clog2(NUM_POINTS/2)-1:0] wdatas [2];
+
+    mdpram #(
+        .DEPTH(NUM_POINTS),
+        .WIDTH($clog2(NUM_POINTS/2)),
+        .RD_LAT(1),
+        .NUM_RD(2),
+        .NUM_WR(2)
+    ) point_ntwrk_lut (
+        .clk   (clk),
+        .rst_n (rst_n),
+
+        .raddr (raddrs),
+        .ren   (rens),
+        .rdata (rdatas),
+
+        .waddr (waddrs),
+        .wen   (wens),
+        .wdata (wdatas)
+    );
 
 endmodule

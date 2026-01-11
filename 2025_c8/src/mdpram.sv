@@ -44,7 +44,7 @@ module mdpram #(
         for (int i=0; i<NUM_WR; i++) begin : mdpram_wr
             if(wen[i]) begin
                 for (int j=0; j<NUM_RD; j++) begin
-                    mem[i+j*NUM_RD][waddr[i]] <= wdata;
+                    mem[i+j*NUM_RD][waddr[i]] <= wdata[i];
                     mru[waddr[i]] <= i[$clog2(NUM_WR)-1:0];
                 end
             end
