@@ -1,0 +1,3 @@
+#Ignore generated test stimulus files
+conns.txt
+sorted.txt
