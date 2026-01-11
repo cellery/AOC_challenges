@@ -25,6 +25,7 @@ module top #(
     logic [DIM_W-1:0]                  locs [3];
     conn_t                             conn;
     logic                              conn_vld;
+    logic                              dist_done;
     
     //Network sorting nets   
     logic [$clog2(NUM_POINTS)-1:0]     pointa_sort;
@@ -52,7 +53,8 @@ module top #(
         .locs_rdy   (locs_rdy),
     
         .conn       (conn),
-        .conn_vld   (conn_vld)
+        .conn_vld   (conn_vld),
+        .done       (dist_done)
     );
 
     ins_sorter  #(
@@ -65,6 +67,7 @@ module top #(
 
         .conn_in     (conn),
         .conn_in_vld (conn_vld),
+        .dist_done   (dist_done),
 
         .pointa_out  (pointa_sort),
         .pointb_out  (pointb_sort),

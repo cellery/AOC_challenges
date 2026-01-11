@@ -18,7 +18,8 @@ module dist_calc #(
     //Output approx distance and points
     //Number of bits needed for approx dist is based on this dist formula:  (Xa-Xb)^2 + (Ya-Yb)^2 + (Za-Zb)^2
     output conn_t                          conn,
-    output logic                           conn_vld
+    output logic                           conn_vld,
+    output logic                           done
 );
 
     localparam DIST_W = (DIM_W+1)*2+2;
@@ -37,8 +38,6 @@ module dist_calc #(
     logic                             rd_point_inc_r;
 
     logic [DIM_W-1:0]                 dists [3];
-
-    logic                             done;
 
     //Write/read pointer logic. Write pointer increments when we've calculated all distances with the current point
     //Read pointer increments from 0 up to current write pointer and resets back to 0 until we're done
@@ -75,7 +74,7 @@ module dist_calc #(
                 .DEPTH(NUM_POINTS), 
                 .WIDTH(DIM_W),
                 .RD_LAT(1),
-                .WR_MODE(1)
+                .WR_MODE(0)
             ) loc_memory (
                 .clk  (clk),
                 .rst_n(rst_n),

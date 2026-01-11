@@ -141,13 +141,9 @@ class ConnChecker:
 
     async def check_sort(self):
         self.sort_status = Status.RUNNING
-        #Wait for distance calculator to finish
-        while not self.dut.dist_calc_i.done.value :
-            await RisingEdge(self.clk)
-            await ReadOnly()
 
-        #Now wait until we stop seeing data coming out of the sorter block
-        while self.dut.ins_sorter_i.points_vld.value :
+        #Wait for ins sorter to finish
+        while not self.dut.ins_sorter_i.sort_done.value :
             await RisingEdge(self.clk)
             await ReadOnly()
 
@@ -216,5 +212,9 @@ async def aoc_2025_chal8(dut):
 
     while (conn_checker.sort_status != Status.DONE):
         await sort_checker_thread
+
+    #Wait for a bit longer to capture just after our last thread finishes
+    for _ in range(100):
+        await RisingEdge(dut.clk)
 
     cocotb.log.info("cocotb finished")
