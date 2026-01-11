@@ -91,6 +91,8 @@ class Network:
         self.connections.append((point0, point1))
         return True
 
+    def __str__(self):
+        return f"({self.id}, valid={self.valid}, {self.points})"
 
     def clear_info(self):
         self.points = []

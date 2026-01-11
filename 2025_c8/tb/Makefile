@@ -14,7 +14,7 @@ COCOTB_TOPLEVEL = top
 COCOTB_TEST_MODULES = tb
 
 # Verilator simulation defines
-EXTRA_ARGS += +define+DIM_W=17 +define+NUM_POINTS=20 +define+NUM_CONNS=10 +define+NUM_NTWRKS=3 
+EXTRA_ARGS += +define+DIM_W=17 +define+NUM_POINTS=20 +define+NUM_CONNS=20 +define+NUM_NTWRKS=3 
 
 #Other verilator options
 EXTRA_ARGS += --trace --trace-structs --structs-packed --trace-max-array 0 --trace-max-width 0 

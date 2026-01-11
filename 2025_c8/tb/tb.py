@@ -16,9 +16,7 @@ from enum import Enum
 import pytest
 
 #Import helper functions from sw area
-target_dir = os.path.abspath('../sw')
-sys.path.append(target_dir)
-from solution import Vector3D, Point, insert_sort_min
+from generate_files import *
 target_dir = os.path.abspath('../../common')
 sys.path.append(target_dir)
 from tb_helpers import clog2, decode_packed_struct
@@ -27,43 +25,11 @@ from tb_helpers import clog2, decode_packed_struct
 ASSERTS_ENABLED = 1 #Global enable for all asserts for test case
 CONN_ASSERTS = 1
 SORT_ASSERTS = 1
+NTWRK_ASSERTS = 1
 TEST_STIMULUS = "../misc/test_stimulus_001" #If test stimulus folder is not found then all stimulus will be randomly generated
 NUM_POINTS = 20
-NUM_CONNS = 10
+NUM_CONNS = 20
 NUM_NTWRKS = 3
-
-def generate_conn_files(points_file, conns_file, sorted_file):
-    with open(points_file, 'r') as file:
-        cfile = open(conns_file, 'w')
-        sfile = open(sorted_file, 'w')
-        point_id = 0
-        points = []
-        total_connections = 0
-        connections = []
-        for line in file:
-            x, y, z = line.split(",")
-            new_point = Point(point_id, [int(x), int(y), int(z)])
-
-            #Check connection length to all existing points and insert into list of connections if less than the 1000th connection point
-            for point in points:
-                dist = Vector3D.dist_approx(point.location, new_point.location)
-                new_connection = (dist, point.id, new_point.id)
-                cfile.write(f"{new_connection}\n")
-                if total_connections < NUM_CONNS or dist <= connections[NUM_CONNS-1][0]:
-                    connections = insert_sort_min(new_connection, connections)[:NUM_CONNS]
-                    if(total_connections < NUM_CONNS) : total_connections += 1
-
-                    
-            #Add to list of points
-            points.append(new_point)
-
-            point_id += 1
-
-        #Write sorted connections to file
-        for conn in connections:
-            sfile.write(f"{conn}\n")
-        cfile.close()
-        sfile.close()
 
 class Status(Enum):
     IDLE = 0
@@ -162,8 +128,7 @@ class ConnChecker:
             line_ind += 1
 
         self.sfile.close()
-        self.sort_status = Status.DONE
-                
+        self.sort_status = Status.DONE        
 
 @cocotb.test()
 async def aoc_2025_chal8(dut):
@@ -179,9 +144,11 @@ async def aoc_2025_chal8(dut):
         
         conns_file = os.path.join(stim_dir, "conns.txt")
         sorted_file = os.path.join(stim_dir, "sorted.txt")
-        if not os.path.isfile(conns_file) or not os.path.isfile(sorted_file):
+        network_file = os.path.join(stim_dir, "network.txt")
+        if not os.path.isfile(conns_file) or not os.path.isfile(sorted_file) or not os.path.isfile(network_file):
             cocotb.log.info(f"Generating connections files...")
-            generate_conn_files(points_file, conns_file, sorted_file)
+            connections = generate_conn_files(points_file, conns_file, sorted_file, NUM_CONNS)
+            generate_network_file(conns_file, network_file, connections)
     else:
         cocotb.log.error(f"{test_name} does not support auto generated points, please provide a test stimulus folder in TEST_STIMULUS global variable")
 
