@@ -121,6 +121,9 @@ def generate_connection_list(line, index):
                 new_connection = (dist, point.id, new_point.id)
                 
                 connections = insert_sort_min(new_connection, connections)[:final_num_conns]
+                if(total_connections < final_num_conns): 
+                    total_connections+=1
+
 
                 
         #Add to list of points
