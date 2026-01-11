@@ -3,6 +3,7 @@
 
 module ins_sorter #(
     parameter NUM_POINTS = 1000,
+    parameter NUM_CONNS  = 1000,
     parameter DIM_W      = 17,
     parameter SORT_OP    = 0 //0 - min sort, 1 - max sort
 ) (
@@ -19,11 +20,11 @@ module ins_sorter #(
     output logic                           points_vld
 );
 
-    conn_t conn_out     [NUM_POINTS];
-    logic  conn_out_vld [NUM_POINTS];
+    conn_t conn_out     [NUM_CONNS];
+    logic  conn_out_vld [NUM_CONNS];
 
     generate
-        for(genvar i=0; i<NUM_POINTS; i++) begin
+        for(genvar i=0; i<NUM_CONNS; i++) begin : sort_node_inst
             if(i==0) begin
                 sort_node #(
                     .NUM_POINTS(NUM_POINTS),

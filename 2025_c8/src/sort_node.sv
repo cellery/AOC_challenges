@@ -22,15 +22,15 @@ module sort_node #(
     logic                            replace_node;
     logic                            shift_node;
 
-    generate
+    always_comb begin
         if(SORT_OP == 0) begin
-            assign replace_node = !conn_cur_vld || (conn_in.distance < conn_cur.distance);
+            replace_node = (!conn_cur_vld || conn_in.distance < conn_cur.distance) && conn_in_vld;
         end else if(SORT_OP == 1) begin
-            assign replace_node = !conn_cur_vld || (conn_in.distance > conn_cur.distance);
+            replace_node = (!conn_cur_vld || conn_in.distance > conn_cur.distance) && conn_in_vld;
         end else begin
             $fatal(1, "FATAL Error: Parameter SORT_OP (%0d) must be 0 or 1!", SORT_OP);
         end
-    endgenerate
+    end
 
     //Replace node with new info
     always_ff @(posedge clk) begin
@@ -40,8 +40,10 @@ module sort_node #(
         conn_cur_vld      <= !conn_cur_vld ? replace_node      : conn_cur_vld;
 
         if (!rst_n) begin
-            conn_cur     <= '0;
-            conn_cur_vld <= 1'b0;
+            conn_cur.distance <= (SORT_OP == 0) ? '1 : '0;
+            conn_cur.pointa   <= '0;
+            conn_cur.pointb   <= '0;
+            conn_cur_vld      <= 1'b0;
         end
     end
 

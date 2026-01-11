@@ -1,7 +1,8 @@
-//import aoc_types_pkg::*;
+import aoc_types_pkg::*;
 
 module top #(
     parameter NUM_POINTS = `NUM_POINTS,
+    parameter NUM_CONNS  = `NUM_CONNS,
     parameter DIM_W      = `DIM_W,
     parameter NUM_NTWRKS = `NUM_NTWRKS
 ) (
@@ -56,6 +57,7 @@ module top #(
 
     ins_sorter  #(
         .NUM_POINTS(NUM_POINTS),
+        .NUM_CONNS (NUM_CONNS),
         .DIM_W     (DIM_W)
     ) ins_sorter_i (
         .clk         (clk),

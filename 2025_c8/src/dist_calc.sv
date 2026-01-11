@@ -70,7 +70,7 @@ module dist_calc #(
     end
 
     generate 
-        for(genvar i=0;i<3;i=i+1) begin
+        for(genvar i=0;i<3;i=i+1) begin : loc_mem_inst
             sdpram #(
                 .DEPTH(NUM_POINTS), 
                 .WIDTH(DIM_W),
