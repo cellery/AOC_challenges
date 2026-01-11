@@ -24,8 +24,8 @@ module ins_sorter #(
     logic  conn_out_vld [NUM_CONNS];
 
     generate
-        for(genvar i=0; i<NUM_CONNS; i++) begin : sort_node_inst
-            if(i==0) begin
+        for(genvar i=0; i<NUM_CONNS; i++) begin : sort_node_loop
+            if(i==0) begin : first_node
                 sort_node #(
                     .NUM_POINTS(NUM_POINTS),
                     .DIM_W(DIM_W),
@@ -40,7 +40,7 @@ module ins_sorter #(
                     .conn_out     (conn_out[i]),
                     .conn_out_vld (conn_out_vld[i])
                 );
-            end else begin
+            end else begin : next_nodes
                 sort_node #(
                     .NUM_POINTS(NUM_POINTS),
                     .DIM_W(DIM_W),
@@ -58,5 +58,9 @@ module ins_sorter #(
             end
         end
     endgenerate
+
+    assign pointa_out = conn_out[NUM_CONNS-1].pointa;
+    assign pointb_out = conn_out[NUM_CONNS-1].pointb;
+    assign points_vld = conn_out_vld[NUM_CONNS-1];
 
 endmodule

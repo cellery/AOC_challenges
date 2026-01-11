@@ -42,10 +42,10 @@ module dist_calc #(
 
     //Write/read pointer logic. Write pointer increments when we've calculated all distances with the current point
     //Read pointer increments from 0 up to current write pointer and resets back to 0 until we're done
-    assign wr_point_inc = locs_vld && locs_rdy;
+    assign wr_point_inc = locs_vld && locs_rdy && wr_point_ind < NUM_POINTS-1;
     assign locs_rdy = wr_point_rdy;
     assign wr_point_rdy = wr_point_ind < 1 || rd_point_ind == wr_point_ind - 1;
-    assign rd_point_inc = wr_point_ind >= 1 && !done;
+    assign rd_point_inc = wr_point_ind >= 1 && rd_point_ind < NUM_POINTS-2;
 
     always_ff @(posedge clk) begin
         wr_point_ind    <= wr_point_inc ? wr_point_ind+1 : wr_point_ind;
@@ -98,5 +98,5 @@ module dist_calc #(
     assign conn.pointb = wr_point_ind_r;
     assign conn_vld = rd_point_inc_r; 
     
-    assign done = wr_point_ind == NUM_POINTS && rd_point_ind == NUM_POINTS;
+    assign done = wr_point_ind == NUM_POINTS-1 && rd_point_ind == NUM_POINTS-2;
 endmodule
