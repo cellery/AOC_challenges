@@ -11,6 +11,7 @@ import sys
 import inspect
 import re
 from enum import Enum
+import asyncio
 
 #Pytest
 import pytest
@@ -128,7 +129,62 @@ class ConnChecker:
             line_ind += 1
 
         self.sfile.close()
-        self.sort_status = Status.DONE        
+        self.sort_status = Status.DONE       
+
+class NetworkChecker:
+    def __init__(self, nfile, sfile, dut, clk, rst_n):
+        self.dut = dut
+        self.clk = clk
+        self.rst_n = rst_n
+        self.num_cr_running = 0
+        self.ntwrk_status = Status.IDLE
+        self.lock = asyncio.Lock()
+
+        self.sfile = open(sfile, 'r')
+        self.nfile = open(nfile, 'r')
+        
+
+    def __del__(self):
+        self.sfile.close()
+        self.nfile.close()
+
+    async def update_status(self, new_status):
+        async with self.lock:
+            if new_status == Status.RUNNING:
+                self.num_cr_running += 1
+            elif new_status == Status.DONE:
+                self.num_cr_running -= 1
+
+            #The only potential issue with this is if we had a coroutine start and finish so quickly that no other coroutines spun up
+            #This would cause ntwrk_status to prematurely go to Status.Done. However no coroutine should finish before other coroutines have started
+            if self.ntwrk_status == Status.IDLE and self.num_cr_running > 0 :
+                self.ntwrk_status = Status.RUNNING
+            elif self.ntwrk_status == Status.RUNNING and self.num_cr_running == 0 :
+                self.ntwrk_status = Status.DONE
+            
+            cocotb.log.info(f"Network status: {self.ntwrk_status}")
+
+    async def check_conns(self):
+        await self.update_status(Status.RUNNING)
+
+        line_ind = 0
+        reversed_lines = list(reversed(self.sfile.readlines())) #Connections come in reverse order into the network block
+        self.sfile.close()
+
+        #Check that each point sampled on ready/valid matches our golden data
+        while line_ind < len(reversed_lines): 
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+            if self.dut.point_ntwrk_i.points_in_vld.value and self.dut.point_ntwrk_i.points_in_rdy.value:
+                line = reversed_lines[line_ind].strip()
+                dist, pointa, pointb = re.sub(r"\(|\)|\s", "", line).split(",")
+                assert int(self.dut.point_ntwrk_i.pointa_in.value) == int(pointa)
+                assert int(self.dut.point_ntwrk_i.pointb_in.value) == int(pointb)
+
+                line_ind += 1
+
+        await self.update_status(Status.DONE)
 
 @cocotb.test()
 async def aoc_2025_chal8(dut):
@@ -161,10 +217,13 @@ async def aoc_2025_chal8(dut):
     #Connection checker verifies all generated connections match generated list from sw test
     if ASSERTS_ENABLED and CONN_ASSERTS:
         conn_checker = ConnChecker(conns_file, sorted_file, dut, dut.clk, dut.rst_n)
-        conn_checker_thread = cocotb.start_soon(conn_checker.check_conn())
+        conn_checker_cr = cocotb.start_soon(conn_checker.check_conn())
+        if SORT_ASSERTS:
+            sort_checker_cr = cocotb.start_soon(conn_checker.check_sort())
 
-    if ASSERTS_ENABLED and SORT_ASSERTS:
-        sort_checker_thread = cocotb.start_soon(conn_checker.check_sort())
+    if ASSERTS_ENABLED and NTWRK_ASSERTS:
+        ntwrk_checker = NetworkChecker(network_file, sorted_file, dut, dut.clk, dut.rst_n)
+        ntwrk_checker_cr = cocotb.start_soon(ntwrk_checker.check_conns())
 
     # Reset pulse
     dut.rst_n.value = 0
@@ -177,10 +236,15 @@ async def aoc_2025_chal8(dut):
     while (point_o.status != Status.DONE):
         await point_o.write_point()
 
-    while (conn_checker.sort_status != Status.DONE):
-        await sort_checker_thread
+    if ASSERTS_ENABLED and SORT_ASSERTS:
+        while (conn_checker.sort_status != Status.DONE):
+            await sort_checker_cr
 
-    #Wait for a bit longer to capture just after our last thread finishes
+    if ASSERTS_ENABLED and NTWRK_ASSERTS:
+        while (ntwrk_checker.ntwrk_status != Status.DONE):
+            await ntwrk_checker_cr
+
+    #Wait for a bit longer to capture just after our last coroutine finishes
     for _ in range(100):
         await RisingEdge(dut.clk)
 
