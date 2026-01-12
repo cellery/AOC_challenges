@@ -21,12 +21,14 @@ module mdpram #(
     input  logic [WIDTH-1:0]               wdata [NUM_WR]
 );
 
-    if (RD_LAT < 1) begin
-        $fatal(1, "FATAL Error: Parameter RD_LAT (%0d) must be greater than or equal to 1 for %m", RD_LAT);
-    end else if (NUM_RD != 2) begin
-        $fatal(1, "FATAL Error: Parameter NUM_RD (%0d) must be equal to 2 for %m", NUM_RD);
-    end else if (NUM_WR != 2) begin
-        $fatal(1, "FATAL Error: Parameter NUM_WR (%0d) must be equal to 2 for %m", NUM_WR);
+    initial begin
+        if (RD_LAT < 1) begin
+            $fatal(1, "FATAL Error: Parameter RD_LAT (%0d) must be greater than or equal to 1 for %m", RD_LAT);
+        end else if (NUM_RD != 2) begin
+            $fatal(1, "FATAL Error: Parameter NUM_RD (%0d) must be equal to 2 for %m", NUM_RD);
+        end else if (NUM_WR != 2) begin
+            $fatal(1, "FATAL Error: Parameter NUM_WR (%0d) must be equal to 2 for %m", NUM_WR);
+        end
     end
 
     //To support N number of read and write ports we need to multiply the two together
@@ -35,7 +37,7 @@ module mdpram #(
     logic [DEPTH-1:0][$clog2(NUM_WR)-1:0]  mru;  //Most recently used table to mux correct read data
 
     //Rdata/mru pipeline signals
-    logic [RD_LAT-1:0][WIDTH-1:0]          rdata_r [NUM_RD];
+    logic [RD_LAT-1:0][WIDTH-1:0]          rdata_r [NUM_RD*NUM_WR];
     logic [RD_LAT-1:0][$clog2(NUM_WR)-1:0] mru_r   [NUM_RD];
     
 
@@ -45,7 +47,7 @@ module mdpram #(
             if(wen[i]) begin
                 for (int j=0; j<NUM_RD; j++) begin
                     mem[i+j*NUM_RD][waddr[i]] <= wdata[i];
-                    mru[waddr[i]] <= i[$clog2(NUM_WR)-1:0];
+                    mru[waddr[i]]             <= i[$clog2(NUM_WR)-1:0];
                 end
             end
         end
@@ -54,7 +56,7 @@ module mdpram #(
     //Read logic - we read out mru and pipeline it to match read data and use that to mux the final output for each read port
     generate
         for (genvar i=0; i<NUM_RD; i++) begin
-            assign rdata[i] = rdata_r[mru_r[i][RD_LAT-1]][RD_LAT-1];
+            assign rdata[i] = rdata_r[mru_r[i][RD_LAT-1]+i*NUM_WR][RD_LAT-1];
         end
     endgenerate
 
@@ -65,8 +67,10 @@ module mdpram #(
                 mru_r[i] <= '0;
             end else if(ren[i]) begin
                 for(int j=0;j<RD_LAT;j++) begin
-                    rdata_r[i][j] <= (j==0) ? mem[i][raddr[i]] : rdata_r[i][j-1];
-                    mru_r[i][j]   <= (j==0) ? mru[raddr[i]] : mru_r[i][j-1];
+                    for (int k=0; k<NUM_WR; k++) begin
+                        rdata_r[i*NUM_RD+k][j]   <= (j==0) ? mem[i*NUM_RD+k][raddr[i]] : rdata_r[i*NUM_RD+k][j-1];
+                    end
+                    mru_r[i][j]                  <= (j==0) ? mru[raddr[i]]             : mru_r[i][j-1];
                 end
             end
         end
