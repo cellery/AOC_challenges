@@ -18,7 +18,8 @@ module ins_sorter #(
     //Output point tuple for network LUT
     output logic [$clog2(NUM_POINTS)-1:0]  pointa_out,
     output logic [$clog2(NUM_POINTS)-1:0]  pointb_out,
-    output logic                           points_vld
+    output logic                           points_vld,
+    input  logic                           points_rdy
 );
 
     conn_t                          conn_out     [NUM_CONNS];
@@ -29,6 +30,7 @@ module ins_sorter #(
     logic                           read_nodes;
     logic                           read_nodes_r;
     logic                           read_nodes_r2;
+    logic                           points_rdy_r;
 
     assign read_nodes = sort_done && (num_read_nodes != NUM_CONNS);
 
@@ -43,6 +45,7 @@ module ins_sorter #(
                     .clk         (clk),
                     .rst_n       (rst_n),
                     .read        (read_nodes_r),
+                    .forward_rdy (points_rdy_r),
         
                     .conn_in     (conn_in),
                     .conn_in_vld (conn_in_vld),
@@ -59,6 +62,7 @@ module ins_sorter #(
                     .clk         (clk),
                     .rst_n       (rst_n),
                     .read        (read_nodes_r),
+                    .forward_rdy (points_rdy_r),
         
                     .conn_in     (conn_out[i-1]),
                     .conn_in_vld (conn_out_vld[i-1]),
@@ -75,6 +79,7 @@ module ins_sorter #(
         read_nodes_r <= read_nodes;
         read_nodes_r2 <= read_nodes_r;
         num_read_nodes <= read_nodes ? num_read_nodes+1 : num_read_nodes;
+        points_rdy_r <= points_rdy;
 
         if(!rst_n) begin
             sort_done      <= 1'b0;

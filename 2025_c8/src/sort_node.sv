@@ -7,6 +7,7 @@ module sort_node #(
     input  logic                            clk,
     input  logic                            rst_n,
     input  logic                            read,
+    input  logic                            forward_rdy,
     
     //New distance that needs to be sorted
     input  conn_t                           conn_in,
@@ -23,6 +24,7 @@ module sort_node #(
     logic                            replace_node;
     logic                            shift_node;
     logic                            forward_mode;
+    logic                            freeze_out;
 
     always_comb begin
         if(SORT_OP == 0) begin
@@ -51,11 +53,12 @@ module sort_node #(
 
     //Connection out will be the incoming connection if we're in forwarding more or we're not reading/replacing current node
     //Otherwise if we are reading or replacing current node then forward the current node out
+    assign freeze_out = forward_mode && !forward_rdy;
     always_ff @(posedge clk) begin
-        conn_out.distance <= (replace_node || read) && !forward_mode  ? conn_cur.distance : conn_in.distance;
-        conn_out.pointa   <= (replace_node || read) && !forward_mode  ? conn_cur.pointa   : conn_in.pointa;
-        conn_out.pointb   <= (replace_node || read) && !forward_mode  ? conn_cur.pointb   : conn_in.pointb;
-        conn_out_vld      <= forward_mode ? conn_in_vld : ((replace_node || read) ? conn_cur_vld : conn_in_vld);
+        conn_out.distance <= freeze_out ? conn_out.distance : ((replace_node || read) && !forward_mode  ? conn_cur.distance : conn_in.distance);
+        conn_out.pointa   <= freeze_out ? conn_out.pointa   : ((replace_node || read) && !forward_mode  ? conn_cur.pointa   : conn_in.pointa);
+        conn_out.pointb   <= freeze_out ? conn_out.pointb   : ((replace_node || read) && !forward_mode  ? conn_cur.pointb   : conn_in.pointb);
+        conn_out_vld      <= forward_mode ? conn_in_vld && forward_rdy : ((replace_node || read) ? conn_cur_vld : conn_in_vld);
 
         //Switch to forwarding mode once we get the read signal
         forward_mode <= read ? 1'b1 : forward_mode;

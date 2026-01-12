@@ -28,9 +28,20 @@ module top #(
     logic                              dist_done;
     
     //Network sorting nets   
-    logic [$clog2(NUM_POINTS)-1:0]     pointa_sort;
-    logic [$clog2(NUM_POINTS)-1:0]     pointb_sort;
-    logic                              points_sort_vld;
+    logic [$clog2(NUM_POINTS)-1:0]     pointa_sort_out;
+    logic [$clog2(NUM_POINTS)-1:0]     pointb_sort_out;
+    logic                              points_sort_out_vld;
+    logic                              points_sort_out_rdy;
+
+    logic [$clog2(NUM_POINTS)-1:0]     pointa_sort_in;
+    logic [$clog2(NUM_POINTS)-1:0]     pointb_sort_in;
+    logic                              points_sort_in_vld;
+    logic                              points_sort_in_rdy;
+
+    logic                              sort_points_fifo_afull;
+    logic                              sort_points_fifo_full;
+    logic                              sort_points_fifo_empty;
+
     logic [$clog2(NUM_POINTS/2)-1:0]   ntwrk_sz [NUM_NTWRKS];
     logic                              ntwrk_sz_vld;
 
@@ -69,24 +80,47 @@ module top #(
         .conn_in_vld (conn_vld),
         .dist_done   (dist_done),
 
-        .pointa_out  (pointa_sort),
-        .pointb_out  (pointb_sort),
-        .points_vld  (points_sort_vld)
+        .pointa_out  (pointa_sort_out),
+        .pointb_out  (pointb_sort_out),
+        .points_vld  (points_sort_out_vld),
+        .points_rdy  (points_sort_out_rdy)
+    );
+
+    assign points_sort_out_rdy = !sort_points_fifo_afull; //Use almost full as there is one extra cycle of delay in the sorter block
+    assign points_sort_in_vld = !sort_points_fifo_empty;
+    sfifo #(
+        .DWIDTH($clog2(NUM_POINTS)*2),
+        .DEPTH(16),
+        .AFULL(2) 
+    ) sort_points_fifo (
+        .clk  (clk),
+        .rst_n(rst_n),
+
+        .din  ({pointa_sort_out, pointb_sort_out}),
+        .wr_en(points_sort_out_vld && !sort_points_fifo_full),
+
+        .dout ({pointa_sort_in, pointb_sort_in}),
+        .rd_en(points_sort_in_rdy),
+
+        .full (sort_points_fifo_full),
+        .afull(sort_points_fifo_afull),
+        .empty(sort_points_fifo_empty)
     );
 
     point_ntwrk  #(
         .NUM_POINTS(NUM_POINTS),
         .NUM_NTWRKS(NUM_NTWRKS)
     ) point_ntwrk_i (
-        .clk         (clk),
-        .rst_n       (rst_n),
+        .clk          (clk),
+        .rst_n        (rst_n),
         
-        .pointa_in   (pointa_sort),
-        .pointb_in   (pointb_sort),
-        .points_vld  (points_sort_vld),
+        .pointa_in    (pointa_sort_in),
+        .pointb_in    (pointb_sort_in),
+        .points_in_vld(points_sort_in_vld),
+        .points_in_rdy(points_sort_in_rdy),
     
-        .ntwrk_sz    (ntwrk_sz),
-        .ntwrk_sz_vld(ntwrk_sz_vld)
+        .ntwrk_sz     (ntwrk_sz),
+        .ntwrk_sz_vld (ntwrk_sz_vld)
     );
 
     //TODO - This could cause timing issues if NUM_NTWRKS becomes large
