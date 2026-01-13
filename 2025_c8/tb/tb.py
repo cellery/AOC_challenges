@@ -87,12 +87,12 @@ class ConnChecker:
         self.sfile.close()
 
     async def check_conn(self):
-        line = self.cfile.readline().strip()
-        while 1 :
+        while True :
             await RisingEdge(self.clk)
             await ReadOnly()
 
             if self.dut.dist_calc_i.conn_vld.value == 1 :
+                line = self.cfile.readline().strip()
                 if line:
                     dist, pointa, pointb = re.sub(r"\(|\)|\s", "", line).split(",")
                     conn_struct_mapping = [("pointb",clog2(int(self.dut.NUM_POINTS.value))), ("pointa",clog2(int(self.dut.NUM_POINTS.value))), ("distance", (int(self.dut.DIM_W.value)+1)*2+2)]
@@ -103,7 +103,7 @@ class ConnChecker:
                 else:
                     self.cfile.close()
                     break
-                line = self.cfile.readline().strip()
+                
 
     async def check_sort(self):
         self.sort_status = Status.RUNNING
@@ -147,12 +147,14 @@ class NetworkChecker:
         self.sfile.close()
         self.nfile.close()
 
-    async def update_status(self, new_status):
+    async def update_status(self, cr_name, new_status):
         async with self.lock:
             if new_status == Status.RUNNING:
+                cocotb.log.info(f"Network status: started {cr_name}")
                 self.num_cr_running += 1
             elif new_status == Status.DONE:
                 self.num_cr_running -= 1
+                cocotb.log.info(f"Network status: finished {cr_name}")
 
             #The only potential issue with this is if we had a coroutine start and finish so quickly that no other coroutines spun up
             #This would cause ntwrk_status to prematurely go to Status.Done. However no coroutine should finish before other coroutines have started
@@ -161,10 +163,10 @@ class NetworkChecker:
             elif self.ntwrk_status == Status.RUNNING and self.num_cr_running == 0 :
                 self.ntwrk_status = Status.DONE
             
-            cocotb.log.info(f"Network status: {self.ntwrk_status}")
+            cocotb.log.info(f"Overall network block status: {self.ntwrk_status}")
 
-    async def check_conns(self):
-        await self.update_status(Status.RUNNING)
+    async def check_conn(self):
+        await self.update_status(inspect.stack()[0].function, Status.RUNNING)
 
         line_ind = 0
         reversed_lines = list(reversed(self.sfile.readlines())) #Connections come in reverse order into the network block
@@ -180,10 +182,52 @@ class NetworkChecker:
                 dist, pointa, pointb = re.sub(r"\(|\)|\s", "", line).split(",")
                 assert int(self.dut.point_ntwrk_i.pointa_in.value) == int(pointa)
                 assert int(self.dut.point_ntwrk_i.pointb_in.value) == int(pointb)
-
                 line_ind += 1
 
-        await self.update_status(Status.DONE)
+        await self.update_status(inspect.stack()[0].function, Status.DONE)
+
+    async def check_ntwrk(self):
+        await self.update_status(inspect.stack()[0].function, Status.RUNNING)
+
+        num_conns_read = 0
+        action_string_table = ["NEW", "WR_A", "WR_B", "MERGE", "IGNORE", "LOOKUP"]
+        networks = []
+
+        while True:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+
+            if self.dut.point_ntwrk_i.read_in_point_r.value:
+                #TODO - Implement method to check stored points in point_ntwrk match the generated golden file
+                
+                #Grab action and point info to update our network model
+                action = int(self.dut.point_ntwrk_i.point_ntwrk_action.value)
+                cocotb.log.info(f"Point Action:  {action_string_table[action]}")
+                pointa = int(self.dut.point_ntwrk_i.pointa_in_r.value)
+                pointb = int(self.dut.point_ntwrk_i.pointb_in_r.value)
+                networks = update_network(networks, [pointa, pointb], action_string_table[action])
+
+                #Read next line of golden file and check each network in golden file matches our modeled networks in HW
+                line = self.nfile.readline().strip()
+                golden_networks_str = line.split("|")
+                test_pass = True
+                for network, golden in zip(networks, golden_networks_str):
+                    test_pass =  str(network) == golden and test_pass
+
+                if not test_pass:
+                    cocotb.log.info(f"Network check failed at conn {num_conns_read} with action {action_string_table[action]}")
+                    for network, golden in zip(networks, golden_networks_str):
+                        cocotb.log.info(f"Modeled network: {str(network)}")
+                        cocotb.log.info(f"Golden network:  {str(golden)}")
+
+                assert test_pass
+
+                num_conns_read += 1
+                if(num_conns_read >= NUM_CONNS):
+                    break
+
+
+        await self.update_status(inspect.stack()[0].function, Status.DONE)
 
 @cocotb.test()
 async def aoc_2025_chal8(dut):
@@ -222,7 +266,8 @@ async def aoc_2025_chal8(dut):
 
     if ASSERTS_ENABLED and NTWRK_ASSERTS:
         ntwrk_checker = NetworkChecker(network_file, sorted_file, dut, dut.clk, dut.rst_n)
-        ntwrk_checker_cr = cocotb.start_soon(ntwrk_checker.check_conns())
+        ntwrk_conn_checker_cr = cocotb.start_soon(ntwrk_checker.check_conn())
+        ntwrk_checker_cr = cocotb.start_soon(ntwrk_checker.check_ntwrk())
 
     # Reset pulse
     dut.rst_n.value = 0
@@ -241,10 +286,12 @@ async def aoc_2025_chal8(dut):
 
     if ASSERTS_ENABLED and NTWRK_ASSERTS:
         while (ntwrk_checker.ntwrk_status != Status.DONE):
-            await ntwrk_checker_cr
+            await cocotb.triggers.First(ntwrk_conn_checker_cr, ntwrk_checker_cr)
 
+    cocotb.log.info("Running a few more cycles...")
     #Wait for a bit longer to capture just after our last coroutine finishes
     for _ in range(100):
         await RisingEdge(dut.clk)
+
 
     cocotb.log.info("cocotb finished")

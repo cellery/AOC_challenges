@@ -59,19 +59,9 @@ def generate_network_file(sorted_file, network_file, connections):
         networks.append(first_network)
         nfile.write(f"{first_network}\n")
         for i in range(len(connections)-2, -1, -1):
-            
-            point0_network_id = 0
-            point1_network_id = 0
-
-            #The search function here is different in HW but end result is the same and returns network ids so we don't update this
-            for network in networks:
-                if (connections[i][1] in network.points):
-                    point0_network_id = network.id
-                if (connections[i][2] in network.points):
-                    point1_network_id = network.id
-
-                if point0_network_id != 0 and point1_network_id != 0:
-                    break
+            #The search function here is different in HW but end result is the same 
+            point0_network_id = find_network_from_point(networks, connections[i][1])
+            point1_network_id = find_network_from_point(networks, connections[i][2])
 
             if point0_network_id == 0 and point1_network_id == 0: #Create new network since neither points were found in a network
                 new_network = Network(len(networks)+1, connections[i][1], connections[i][2])
@@ -96,3 +86,44 @@ def generate_network_file(sorted_file, network_file, connections):
             nfile.write(f"{print_networks(networks)}\n")
 
         nfile.close()
+
+def find_network_from_point(networks, point) :
+    for network in networks:
+        if (point in network.points):
+            return network.id
+
+    return 0 #Invalid network
+
+#Helper function to update the current network based on info passed from the simulation
+def update_network(networks, connection, action):
+    new_networks = networks
+    pointa = connection[0]
+    pointa_ntwrk = find_network_from_point(new_networks, pointa)
+    pointb = connection[1]
+    pointb_ntwrk = find_network_from_point(new_networks, pointb)
+
+    match action :
+        case "NEW" :
+            new_network = Network(len(new_networks)+1, pointa, pointb)
+            new_networks.append(new_network)
+        case "WR_A" :
+            new_networks[pointa_ntwrk-1].add_conn(pointa, pointb)
+        case "WR_B" :
+            new_networks[pointb_ntwrk-1].add_conn(pointa, pointb)
+        case "MERGE" :
+            new_network = Network(len(new_networks)+1, pointa, pointb)
+            for j in range(len(new_networks[pointa_ntwrk-1].connections)):
+                new_network.add_conn(new_networks[pointa_ntwrk-1].connections[j][0], new_networks[pointa_ntwrk-1].connections[j][1])
+            for j in range(len(new_networks[pointb_ntwrk-1].connections)):
+                new_network.add_conn(new_networks[pointb_ntwrk-1].connections[j][0], new_networks[pointb_ntwrk-1].connections[j][1])
+
+            new_networks[pointa_ntwrk-1].clear_info()
+            new_networks[pointb_ntwrk-1].clear_info()
+            new_networks.append(new_network)
+        case "IGNORE" :
+            pass
+        case "LOOKUP" :
+            #TODO
+            pass
+
+    return new_networks
