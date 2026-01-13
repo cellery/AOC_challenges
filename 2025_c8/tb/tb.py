@@ -1,5 +1,6 @@
 # test_my_design.py (simple)
 
+
 #Cocotb imports
 import cocotb
 from cocotb.clock import Clock
