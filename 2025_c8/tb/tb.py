@@ -11,6 +11,7 @@ import sys
 import inspect
 import re
 from enum import Enum
+from itertools import zip_longest
 
 #Pytest
 import pytest
@@ -91,6 +92,7 @@ class ConnChecker:
             await RisingEdge(self.clk)
             await ReadOnly()
 
+            #TODO - Figure out why the last connection from conns.txt is not being checked!
             if self.dut.dist_calc_i.conn_vld.value == 1 :
                 line = self.cfile.readline().strip()
                 if line:
@@ -197,9 +199,7 @@ class NetworkChecker:
             await RisingEdge(self.clk)
             await ReadOnly()
 
-            if self.dut.point_ntwrk_i.read_in_point_r.value:
-                #TODO - Implement method to check stored points in point_ntwrk match the generated golden file
-                
+            if self.dut.point_ntwrk_i.read_in_point_r.value:                
                 #Grab action and point info to update our network model
                 action = int(self.dut.point_ntwrk_i.point_ntwrk_action.value)
                 cocotb.log.info(f"Point Action:  {action_string_table[action]}")
@@ -211,12 +211,12 @@ class NetworkChecker:
                 line = self.nfile.readline().strip()
                 golden_networks_str = line.split("|")
                 test_pass = True
-                for network, golden in zip(networks, golden_networks_str):
+                for network, golden in zip_longest(networks, golden_networks_str):
                     test_pass =  str(network) == golden and test_pass
 
                 if not test_pass:
                     cocotb.log.info(f"Network check failed at conn {num_conns_read} with action {action_string_table[action]}")
-                    for network, golden in zip(networks, golden_networks_str):
+                    for network, golden in zip_longest(networks, golden_networks_str):
                         cocotb.log.info(f"Modeled network: {str(network)}")
                         cocotb.log.info(f"Golden network:  {str(golden)}")
 
