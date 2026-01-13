@@ -3,7 +3,7 @@
 #Cocotb imports
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, ReadOnly, Timer
+from cocotb.triggers import RisingEdge, ReadOnly, Timer, Lock
 
 #Python libraries for general testbench
 import os
@@ -11,7 +11,6 @@ import sys
 import inspect
 import re
 from enum import Enum
-import asyncio
 
 #Pytest
 import pytest
@@ -102,7 +101,7 @@ class ConnChecker:
                     assert int(conn_struct["pointa"],2) == int(pointa)
                     assert int(conn_struct["pointb"],2) == int(pointb)
                 else:
-                    self.sfile.close()
+                    self.cfile.close()
                     break
                 line = self.cfile.readline().strip()
 
@@ -138,7 +137,7 @@ class NetworkChecker:
         self.rst_n = rst_n
         self.num_cr_running = 0
         self.ntwrk_status = Status.IDLE
-        self.lock = asyncio.Lock()
+        self.lock = cocotb.triggers.Lock()
 
         self.sfile = open(sfile, 'r')
         self.nfile = open(nfile, 'r')
