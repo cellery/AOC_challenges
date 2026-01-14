@@ -107,9 +107,9 @@ def update_network(networks, connection, action):
             new_network = Network(len(new_networks)+1, pointa, pointb)
             new_networks.append(new_network)
         case "WR_A" :
-            new_networks[pointa_ntwrk-1].add_conn(pointa, pointb)
-        case "WR_B" :
             new_networks[pointb_ntwrk-1].add_conn(pointa, pointb)
+        case "WR_B" :
+            new_networks[pointa_ntwrk-1].add_conn(pointa, pointb)
         case "MERGE" :
             new_network = Network(len(new_networks)+1, pointa, pointb)
             for j in range(len(new_networks[pointa_ntwrk-1].connections)):
@@ -123,7 +123,6 @@ def update_network(networks, connection, action):
         case "IGNORE" :
             pass
         case "LOOKUP" :
-            #TODO
             pass
 
     return new_networks
