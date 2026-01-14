@@ -192,7 +192,7 @@ class NetworkChecker:
         await self.update_status(inspect.stack()[0].function, Status.RUNNING)
 
         num_conns_read = 0
-        action_string_table = ["NEW", "WR_A", "WR_B", "MERGE", "IGNORE", "LOOKUP"]
+        action_string_table = ["NEW", "WR_A", "WR_B", "MERGE", "IGNORE", "LOOKUP", "UPDATE"]
         networks = []
 
         while True:
@@ -201,11 +201,24 @@ class NetworkChecker:
 
             if self.dut.point_ntwrk_i.read_in_point_r.value:                
                 #Grab action and point info to update our network model
-                action = int(self.dut.point_ntwrk_i.point_ntwrk_action.value)
-                cocotb.log.info(f"Point Action:  {action_string_table[action]}")
+                ntwrk_action = int(self.dut.point_ntwrk_i.point_ntwrk_action.value)
+                cocotb.log.info(f"Point Action:  {action_string_table[ntwrk_action]}")
                 pointa = int(self.dut.point_ntwrk_i.pointa_in_r.value)
                 pointb = int(self.dut.point_ntwrk_i.pointb_in_r.value)
-                networks = update_network(networks, [pointa, pointb], action_string_table[action])
+
+                #If point -> network LUT requires another lookup we need to wait for that additional lookup to finish to determine action
+                if action_string_table[ntwrk_action] == "LOOKUP":
+                    #TODO - Should add a timeout here as this may get stuck if logic is not working...
+                    while not self.dut.point_ntwrk_i.remap_done.value:
+                        await RisingEdge(self.clk)
+                        await ReadOnly()
+
+                    ntwrk_action = int(self.dut.point_ntwrk_i.remap_ntwrk_action.value)
+                    cocotb.log.info(f"Point Action (Final):  {action_string_table[ntwrk_action]}")
+                    pointa = int(self.dut.point_ntwrk_i.lookupa_orig_point.value)
+                    pointb = int(self.dut.point_ntwrk_i.lookupb_orig_point.value)
+
+                networks = update_network(networks, [pointa, pointb], action_string_table[ntwrk_action])
 
                 #Read next line of golden file and check each network in golden file matches our modeled networks in HW
                 line = self.nfile.readline().strip()
@@ -214,8 +227,10 @@ class NetworkChecker:
                 for network, golden in zip_longest(networks, golden_networks_str):
                     test_pass =  str(network) == golden and test_pass
 
+                cocotb.log.info(f"Network conn {num_conns_read} ({pointa}, {pointb}) with action {action_string_table[ntwrk_action]}")
+
                 if not test_pass:
-                    cocotb.log.info(f"Network check failed at conn {num_conns_read} with action {action_string_table[action]}")
+                    cocotb.log.info(f"Network check failed at conn {num_conns_read} ({pointa}, {pointb}) with action {action_string_table[ntwrk_action]}")
                     for network, golden in zip_longest(networks, golden_networks_str):
                         cocotb.log.info(f"Modeled network: {str(network)}")
                         cocotb.log.info(f"Golden network:  {str(golden)}")
@@ -286,7 +301,7 @@ async def aoc_2025_chal8(dut):
 
     if ASSERTS_ENABLED and NTWRK_ASSERTS:
         while (ntwrk_checker.ntwrk_status != Status.DONE):
-            await cocotb.triggers.First(ntwrk_conn_checker_cr, ntwrk_checker_cr)
+            await cocotb.triggers.Combine(ntwrk_conn_checker_cr, ntwrk_checker_cr)
 
     cocotb.log.info("Running a few more cycles...")
     #Wait for a bit longer to capture just after our last coroutine finishes
