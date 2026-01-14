@@ -92,7 +92,7 @@ class Network:
         return True
 
     def __str__(self):
-        return f"({self.id}, valid={self.valid}, {self.points})"
+        return f"({self.id}, valid={self.valid}, {sorted(self.points)})"
 
     def clear_info(self):
         self.points = []
