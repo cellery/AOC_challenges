@@ -1,4 +1,5 @@
 import math
+import cocotb
 
 def decode_packed_struct(logic_array, fields):
     """
@@ -56,3 +57,7 @@ def decode_packed_struct(logic_array, fields):
 
 def clog2(x):
     return int(math.ceil(math.log2(x)))
+
+def get_define(name):
+    define_name = "define+" + name
+    return cocotb.plusargs[define_name]
