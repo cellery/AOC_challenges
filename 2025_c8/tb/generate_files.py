@@ -3,7 +3,7 @@ import sys
 
 target_dir = os.path.abspath('../sw')
 sys.path.append(target_dir)
-from solution import Vector3D, Point, insert_sort_min, Network
+from solution import *
 
 #Cocotb imports
 import cocotb
@@ -34,6 +34,9 @@ def generate_conn_files(points_file, conns_file, sorted_file, max_conns):
             points.append(new_point)
 
             point_id += 1
+
+            if(point_id >= max_conns):
+                break
 
         #Write sorted connections to file
         for conn in connections:
@@ -86,6 +89,23 @@ def generate_network_file(sorted_file, network_file, connections):
             nfile.write(f"{print_networks(networks)}\n")
 
         nfile.close()
+
+    return networks
+
+def generate_answer_file(answer_file, max_networks, networks):
+    with open(answer_file, 'w') as afile:
+
+        #Sort networks by size (number of points)
+        network_sizes = []
+        for i in range(len(networks)):
+            network_sizes = insert_sort_max(len(networks[i].points), network_sizes)
+
+        #Print max network sizes and total multiplication of each size
+        final_network_product = network_sizes[0]
+        for i in range(1, max_networks):
+            final_network_product *= network_sizes[i]
+
+        afile.write(str(final_network_product))
 
 def find_network_from_point(networks, point) :
     for network in networks:
