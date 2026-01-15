@@ -35,7 +35,7 @@ module sfifo #(
   assign full  = wr_addr[$clog2(DEPTH)]     != rd_addr[$clog2(DEPTH)] &&
                  wr_addr[$clog2(DEPTH)-1:0] == rd_addr[$clog2(DEPTH)-1:0];
 
-  assign occ = (wr_addr < rd_addr) ? (DEPTH + wr_addr) - rd_addr : wr_addr - rd_addr;
+  assign occ = (wr_addr < rd_addr) ? (DEPTH*2 + wr_addr) - rd_addr : wr_addr - rd_addr;
   assign afull = DEPTH - occ <= AFULL;
   
   always_ff @(posedge clk) begin

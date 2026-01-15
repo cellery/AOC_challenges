@@ -1,5 +1,7 @@
 //Insert sorter is a shift register that shifts in new values and will sort them either min or max depending on params
-//import aoc_types_pkg::*;
+import aoc_types_pkg::*;
+
+//TODO - Parameterize this so we can have multiple sorter instances in parallel to speed up connection sorting
 
 module ins_sorter #(
     parameter NUM_POINTS = 1000,
@@ -40,7 +42,8 @@ module ins_sorter #(
                 sort_node #(
                     .NUM_POINTS(NUM_POINTS),
                     .DIM_W(DIM_W),
-                    .SORT_OP(0)
+                    .SORT_OP(0),
+                    .LAST_NODE(0)
                 ) node (
                     .clk         (clk),
                     .rst_n       (rst_n),
@@ -53,11 +56,30 @@ module ins_sorter #(
                     .conn_out     (conn_out[i]),
                     .conn_out_vld (conn_out_vld[i])
                 );
+            end else if(i == NUM_CONNS-1) begin : last_node
+                sort_node #(
+                    .NUM_POINTS(NUM_POINTS),
+                    .DIM_W(DIM_W),
+                    .SORT_OP(0),
+                    .LAST_NODE(1)
+                ) node (
+                    .clk         (clk),
+                    .rst_n       (rst_n),
+                    .read        (read_nodes_r),
+                    .forward_rdy (points_rdy_r),
+        
+                    .conn_in     (conn_out[i-1]),
+                    .conn_in_vld (conn_out_vld[i-1]),
+
+                    .conn_out     (conn_out[i]),
+                    .conn_out_vld (conn_out_vld[i])
+                );
             end else begin : next_nodes
                 sort_node #(
                     .NUM_POINTS(NUM_POINTS),
                     .DIM_W(DIM_W),
-                    .SORT_OP(0)
+                    .SORT_OP(0),
+                    .LAST_NODE(0)
                 ) node (
                     .clk         (clk),
                     .rst_n       (rst_n),
@@ -78,7 +100,7 @@ module ins_sorter #(
         sort_done <= !sort_done ? (dist_done && !conn_out_vld[NUM_CONNS-1]) : sort_done;
         read_nodes_r <= read_nodes;
         read_nodes_r2 <= read_nodes_r;
-        num_read_nodes <= read_nodes ? num_read_nodes+1 : num_read_nodes;
+        num_read_nodes <= read_nodes && (points_vld && points_rdy) ? num_read_nodes+1 : num_read_nodes;
         points_rdy_r <= points_rdy;
 
         if(!rst_n) begin

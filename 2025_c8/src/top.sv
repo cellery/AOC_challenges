@@ -17,9 +17,12 @@ module top #(
     output logic                              locs_rdy,
 
     //Output answer
-    output logic [$clog2(NUM_POINTS/2)*3-1:0] answer,
+    output logic    [$clog2(NUM_CONNS)*3-1:0] answer,
     output logic                              answer_vld
 );
+
+    localparam ANSWER_SZ = $clog2(NUM_CONNS)*3;
+    localparam NTWRK_SZ  = $clog2(NUM_CONNS)+1;
 
     //Dist calculator nets
     logic [DIM_W-1:0]                  locs [3];
@@ -42,11 +45,11 @@ module top #(
     logic                              sort_points_fifo_full;
     logic                              sort_points_fifo_empty;
 
-    logic [$clog2(NUM_POINTS/2)-1:0]   ntwrk_sz [NUM_NTWRKS];
-    logic                              ntwrk_sz_vld;
+    logic             [NTWRK_SZ-1:0]   ntwrk_sz [NUM_NTWRKS];
+    logic                              ntwrk_sz_final;
 
     //Answer logic
-    logic [$clog2(NUM_POINTS/2)*3-1:0] answer_i;
+    logic [ANSWER_SZ-1:0] answer_i;
 
     assign locs[0] = xloc;
     assign locs[1] = yloc;
@@ -91,13 +94,13 @@ module top #(
     sfifo #(
         .DWIDTH($clog2(NUM_POINTS)*2),
         .DEPTH(16),
-        .AFULL(2) 
+        .AFULL(3) 
     ) sort_points_fifo (
         .clk  (clk),
         .rst_n(rst_n),
 
         .din  ({pointa_sort_out, pointb_sort_out}),
-        .wr_en(points_sort_out_vld && !sort_points_fifo_full),
+        .wr_en(points_sort_out_vld),
 
         .dout ({pointa_sort_in, pointb_sort_in}),
         .rd_en(points_sort_in_rdy),
@@ -109,28 +112,29 @@ module top #(
 
     point_ntwrk  #(
         .NUM_POINTS(NUM_POINTS),
-        .NUM_NTWRKS(NUM_NTWRKS)
+        .NUM_NTWRKS(NUM_NTWRKS),
+        .NUM_CONNS(NUM_CONNS)
     ) point_ntwrk_i (
-        .clk          (clk),
-        .rst_n        (rst_n),
+        .clk            (clk),
+        .rst_n          (rst_n),
         
-        .pointa_in    (pointa_sort_in),
-        .pointb_in    (pointb_sort_in),
-        .points_in_vld(points_sort_in_vld),
-        .points_in_rdy(points_sort_in_rdy),
+        .pointa_in      (pointa_sort_in),
+        .pointb_in      (pointb_sort_in),
+        .points_in_vld  (points_sort_in_vld),
+        .points_in_rdy  (points_sort_in_rdy),
     
-        .ntwrk_sz     (ntwrk_sz),
-        .ntwrk_sz_vld (ntwrk_sz_vld)
+        .ntwrk_sz       (ntwrk_sz),
+        .ntwrk_sz_final (ntwrk_sz_final)
     );
 
     //TODO - This could cause timing issues if NUM_NTWRKS becomes large
     always_comb begin : network_prod
-        answer_i = 0;
-        for (int i=0;i<NUM_NTWRKS;i=i+1) begin
+        answer_i = {{ANSWER_SZ-NTWRK_SZ{1'b0}}, ntwrk_sz[0]};
+        for (int i=1;i<NUM_NTWRKS;i=i+1) begin
             answer_i = answer_i * ntwrk_sz[i];
         end
     end 
     assign answer = answer_i;
-    assign answer_vld = ntwrk_sz_vld;
+    assign answer_vld = ntwrk_sz_final;
 
 endmodule

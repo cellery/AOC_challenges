@@ -13,24 +13,18 @@ import re
 from enum import Enum
 from itertools import zip_longest
 
-#Pytest
-import pytest
-
 #Import helper functions from sw area
 from generate_files import *
 target_dir = os.path.abspath('../../common')
 sys.path.append(target_dir)
-from tb_helpers import clog2, decode_packed_struct
+from tb_helpers import *
 
 #TODO - Add randomization for test parameters
 ASSERTS_ENABLED = 1 #Global enable for all asserts for test case
 CONN_ASSERTS = 1
 SORT_ASSERTS = 1
 NTWRK_ASSERTS = 1
-TEST_STIMULUS = "../misc/test_stimulus_001" #If test stimulus folder is not found then all stimulus will be randomly generated
-NUM_POINTS = 20
-NUM_CONNS = 20
-NUM_NTWRKS = 3
+TEST_STIMULUS = "../misc/test_stimulus_002" #If test stimulus folder is not found then all stimulus will be randomly generated
 
 class Status(Enum):
     IDLE = 0
@@ -55,17 +49,25 @@ class PointOrchestrator:
     async def write_point(self):
         await RisingEdge(self.clk)
 
+        num_points = 0
         if self.rst_n.value and self.locs_rdy.value:
             line = self.pfile.readline().strip()
             if line:
                 locs = line.split(",")
                 for loc in range(len(self.locs)) : self.locs[loc].value = int(locs[loc])
                 self.locs_vld.value = 1
+                num_points += 1
             else:
                 self.locs_vld.value = 0
                 cocotb.log.info(f"All points read in!")
                 self.pfile.close()
                 self.status = Status.DONE
+
+        if(num_points >= int(get_define("NUM_POINTS"))):
+            self.locs_vld.value = 0
+            cocotb.log.info(f"All points read in!")
+            self.pfile.close()
+            self.status = Status.DONE
 
     def reset(self):
         # Reset location inputs
@@ -99,9 +101,14 @@ class ConnChecker:
                     dist, pointa, pointb = re.sub(r"\(|\)|\s", "", line).split(",")
                     conn_struct_mapping = [("pointb",clog2(int(self.dut.NUM_POINTS.value))), ("pointa",clog2(int(self.dut.NUM_POINTS.value))), ("distance", (int(self.dut.DIM_W.value)+1)*2+2)]
                     conn_struct = decode_packed_struct(self.dut.dist_calc_i.conn.value, conn_struct_mapping)
-                    assert int(conn_struct["distance"],2) == int(dist)
-                    assert int(conn_struct["pointa"],2) == int(pointa)
-                    assert int(conn_struct["pointb"],2) == int(pointb)
+                    passing = True
+                    passing = passing and int(conn_struct["distance"],2) == int(dist)
+                    passing = passing and int(conn_struct["pointa"],2) == int(pointa)
+                    passing = passing and int(conn_struct["pointb"],2) == int(pointb)
+                    if not passing:
+                        cocotb.log.info(f"Connection: ({int(conn_struct["distance"],2)}, {int(conn_struct["pointa"],2)}, {int(conn_struct["pointb"],2)}) does not match expected: ({dist}, {pointa}, {pointb})")
+
+                    assert passing
                 else:
                     self.cfile.close()
                     break
@@ -120,11 +127,27 @@ class ConnChecker:
         while line :
             dist, pointa, pointb = re.sub(r"\(|\)|\s", "", line).split(",")
             conn_struct_mapping = [("pointb",clog2(int(self.dut.NUM_POINTS.value))), ("pointa",clog2(int(self.dut.NUM_POINTS.value))), ("distance", (int(self.dut.DIM_W.value)+1)*2+2)]
-            conn_path = self.dut.ins_sorter_i.sort_node_loop[line_ind].first_node.node.conn_cur if line_ind == 0 else self.dut.ins_sorter_i.sort_node_loop[line_ind].next_nodes.node.conn_cur
+            if line_ind == 0 :
+                conn_path = self.dut.ins_sorter_i.sort_node_loop[line_ind].first_node.node.conn_cur
+            elif line_ind < int(get_define("NUM_CONNS"))-1:
+                conn_path = self.dut.ins_sorter_i.sort_node_loop[line_ind].next_nodes.node.conn_cur
+            else:
+                conn_path = self.dut.ins_sorter_i.sort_node_loop[line_ind].last_node.node.conn_cur
+
             conn_struct = decode_packed_struct(conn_path.value, conn_struct_mapping)
-            assert int(conn_struct["distance"],2) == int(dist)
-            assert int(conn_struct["pointa"],2) == int(pointa)
-            assert int(conn_struct["pointb"],2) == int(pointb)
+            #assert int(conn_struct["distance"],2) == int(dist)
+            #assert int(conn_struct["pointa"],2) == int(pointa)
+            #assert int(conn_struct["pointb"],2) == int(pointb)
+
+            passing = True
+            passing = passing and int(conn_struct["distance"],2) == int(dist)
+            passing = passing and int(conn_struct["pointa"],2) == int(pointa)
+            passing = passing and int(conn_struct["pointb"],2) == int(pointb)
+            if not passing:
+                cocotb.log.info(f"Sorted Connection point {line_ind} failed!")
+                cocotb.log.info(f"Sorted connection: ({int(conn_struct["distance"],2)}, {int(conn_struct["pointa"],2)}, {int(conn_struct["pointb"],2)})  does not match expected: ({dist}, {pointa}, {pointb})")
+
+            assert passing
 
             line = self.sfile.readline().strip()
             line_ind += 1
@@ -143,11 +166,13 @@ class NetworkChecker:
 
         self.sfile = open(sfile, 'r')
         self.nfile = open(nfile, 'r')
+        self.afile = open(nfile, 'r')
         
 
     def __del__(self):
         self.sfile.close()
         self.nfile.close()
+        self.afile.close()
 
     async def update_status(self, cr_name, new_status):
         async with self.lock:
@@ -238,7 +263,7 @@ class NetworkChecker:
                 assert test_pass
 
                 num_conns_read += 1
-                if(num_conns_read >= NUM_CONNS):
+                if(num_conns_read >= int(get_define("NUM_CONNS"))):
                     break
 
 
@@ -259,10 +284,12 @@ async def aoc_2025_chal8(dut):
         conns_file = os.path.join(stim_dir, "conns.txt")
         sorted_file = os.path.join(stim_dir, "sorted.txt")
         network_file = os.path.join(stim_dir, "network.txt")
-        if not os.path.isfile(conns_file) or not os.path.isfile(sorted_file) or not os.path.isfile(network_file):
+        answer_file = os.path.join(stim_dir, "answer.txt")
+        if not os.path.isfile(conns_file) or not os.path.isfile(sorted_file) or not os.path.isfile(network_file) or not os.path.isfile(answer_file) :
             cocotb.log.info(f"Generating connections files...")
-            connections = generate_conn_files(points_file, conns_file, sorted_file, NUM_CONNS)
-            generate_network_file(conns_file, network_file, connections)
+            connections = generate_conn_files(points_file, conns_file, sorted_file, int(get_define("NUM_CONNS")))
+            networks = generate_network_file(conns_file, network_file, connections)
+            generate_answer_file(answer_file, int(get_define("NUM_NTWRKS")), networks)
     else:
         cocotb.log.error(f"{test_name} does not support auto generated points, please provide a test stimulus folder in TEST_STIMULUS global variable")
 
@@ -303,10 +330,21 @@ async def aoc_2025_chal8(dut):
         while (ntwrk_checker.ntwrk_status != Status.DONE):
             await cocotb.triggers.Combine(ntwrk_conn_checker_cr, ntwrk_checker_cr)
 
-    cocotb.log.info("Running a few more cycles...")
-    #Wait for a bit longer to capture just after our last coroutine finishes
-    for _ in range(100):
-        await RisingEdge(dut.clk)
+    with open(answer_file, 'r') as afile:
+        #Wait for the final answer
+        while not dut.answer_vld.value:
+            await RisingEdge(dut.clk)
+            
+        await ReadOnly()
+        correct_answer = int(afile.readline().strip())
+        cocotb.log.info(f"Final answer: {int(dut.answer.value)}. Actual answer: {correct_answer}")
+        assert int(dut.answer.value) == correct_answer 
+
+    #Keep in case we want to re-enable this for any debugging
+    #cocotb.log.info("Running a few more cycles...")
+    ##Wait for a bit longer to capture just after our last coroutine finishes
+    #for _ in range(100):
+    #    await RisingEdge(dut.clk)
 
 
     cocotb.log.info("cocotb finished")

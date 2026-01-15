@@ -15,16 +15,20 @@ module point_ntwrk #(
     output logic                             points_in_rdy,
 
     //Output network sizes
-    output logic  [$clog2(NUM_POINTS/2)-1:0] ntwrk_sz [NUM_NTWRKS],
-    output logic                             ntwrk_sz_vld
+    output logic       [$clog2(NUM_CONNS):0] ntwrk_sz [NUM_NTWRKS],
+    output logic                             ntwrk_sz_final
 );
 
+    localparam NTWRK_ID_W = $clog2(NUM_CONNS+1);
+    localparam NTWRK_SZ_W = $clog2(NUM_CONNS) + 1;
+
     //Points to new network id when we create one
-    logic [$clog2(NUM_CONNS)-1:0] max_ntwrk_id;
+    logic [NTWRK_ID_W-1:0] max_ntwrk_id;
+    logic [NTWRK_ID_W-1:0] max_ntwrk_id_r;
 
     //Point -> Network signals 
-    logic [$clog2(NUM_CONNS)-1:0]  ntwrka_lu_id;
-    logic [$clog2(NUM_CONNS)-1:0]  ntwrkb_lu_id;
+    logic [NTWRK_ID_W-1:0]  ntwrka_lu_id;
+    logic [NTWRK_ID_W-1:0]  ntwrkb_lu_id;
     logic [$clog2(NUM_POINTS)-1:0] pointa_in_r;
     logic [$clog2(NUM_POINTS)-1:0] pointb_in_r;
     logic                          read_in_point;
@@ -32,50 +36,80 @@ module point_ntwrk #(
 
     logic                          pointa_ntwrk_wr_en;
     logic [$clog2(NUM_POINTS)-1:0] pointa_ntwrk_wr_addr;
-    logic [$clog2(NUM_CONNS)-1:0]  pointa_ntwrk_wr_data;
+    logic [NTWRK_ID_W-1:0]  pointa_ntwrk_wr_data;
     logic                          pointb_ntwrk_wr_en;
     logic [$clog2(NUM_POINTS)-1:0] pointb_ntwrk_wr_addr;
-    logic [$clog2(NUM_CONNS)-1:0]  pointb_ntwrk_wr_data;
+    logic [NTWRK_ID_W-1:0]  pointb_ntwrk_wr_data;
 
 
     //Point -> Network signals
     ntwrk_cmd_id_t                 point_ntwrk_action;
+    logic                          point_ntwrk_started;
+    logic                          point_ntwrk_finished;
 
     //Network lookup/remap table signals
     logic                          lookupa_active;
     logic                          lookupa_en;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupa_raddr;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupa_rdata;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupa_ntwrk;
+    logic [NTWRK_ID_W-1:0]  lookupa_raddr;
+    logic [NTWRK_ID_W-1:0]  lookupa_rdata;
+    logic [NTWRK_ID_W-1:0]  lookupa_ntwrk;
     logic                          lookupa_wen;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupa_waddr;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupa_wdata;
+    logic [NTWRK_ID_W-1:0]  lookupa_waddr;
+    logic [NTWRK_ID_W-1:0]  lookupa_wdata;
     logic [$clog2(NUM_POINTS)-1:0] lookupa_orig_point;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupa_orig_ntwrk;
+    logic [NTWRK_ID_W-1:0]  lookupa_orig_ntwrk;
 
     logic                          lookupb_active;
     logic                          lookupb_en;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupb_raddr;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupb_rdata;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupb_ntwrk;
+    logic [NTWRK_ID_W-1:0]  lookupb_raddr;
+    logic [NTWRK_ID_W-1:0]  lookupb_rdata;
+    logic [NTWRK_ID_W-1:0]  lookupb_ntwrk;
     logic                          lookupb_wen;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupb_waddr;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupb_wdata;
+    logic [NTWRK_ID_W-1:0]  lookupb_waddr;
+    logic [NTWRK_ID_W-1:0]  lookupb_wdata;
     logic [$clog2(NUM_POINTS)-1:0] lookupb_orig_point;
-    logic [$clog2(NUM_CONNS)-1:0]  lookupb_orig_ntwrk;
+    logic [NTWRK_ID_W-1:0]  lookupb_orig_ntwrk;
 
+    //Remap signals, active while we're doing lookups for a/b networks
     logic                          remap_active;
     logic                          remap_done;
     ntwrk_cmd_id_t                 remap_ntwrk_action;
+    ntwrk_cmd_id_t                 remap_ntwrk_action_r;
 
-    assign pointa_ntwrk_wr_en   = point_ntwrk_action == NEW || point_ntwrk_action == WR_A || remap_ntwrk_action == WR_A || remap_ntwrk_action == MERGE;
-    assign pointb_ntwrk_wr_en   = point_ntwrk_action == NEW || point_ntwrk_action == WR_B || remap_ntwrk_action == WR_B || remap_ntwrk_action == MERGE;
-    assign pointa_ntwrk_wr_addr = (remap_ntwrk_action == WR_A || remap_ntwrk_action == MERGE) ? lookupa_orig_point : pointa_in_r; 
-    assign pointb_ntwrk_wr_addr = (remap_ntwrk_action == WR_B || remap_ntwrk_action == MERGE) ? lookupb_orig_point : pointb_in_r; 
-    assign pointa_ntwrk_wr_data = remap_ntwrk_action == WR_A ? lookupb_ntwrk : ((point_ntwrk_action == WR_A) ? ntwrkb_lu_id : max_ntwrk_id);
-    assign pointb_ntwrk_wr_data = remap_ntwrk_action == WR_B ? lookupa_ntwrk : ((point_ntwrk_action == WR_B) ? ntwrka_lu_id : max_ntwrk_id);
+    //Network size table signals
+    logic   [NTWRK_ID_W-1:0]  ntwrka_sz_raddr;
+    logic   [NTWRK_ID_W-1:0]  ntwrka_sz_raddr_r;
+    logic                          ntwrka_sz_ren;
+    logic                          ntwrka_sz_ren_r;
+    logic   [NTWRK_SZ_W-1:0]  ntwrka_sz_rdata;
+    logic   [NTWRK_ID_W-1:0]  ntwrka_sz_waddr;
+    logic                          ntwrka_sz_wen;
+    logic   [NTWRK_SZ_W-1:0]  ntwrka_sz_wdata;
+ 
+    logic   [NTWRK_ID_W-1:0]  ntwrkb_sz_raddr;
+    logic   [NTWRK_ID_W-1:0]  ntwrkb_sz_raddr_r;
+    logic                          ntwrkb_sz_ren;
+    logic                          ntwrkb_sz_ren_r;
+    logic   [NTWRK_SZ_W-1:0]  ntwrkb_sz_rdata;
+    logic   [NTWRK_ID_W-1:0]  ntwrkb_sz_waddr;
+    logic                          ntwrkb_sz_wen;
+    logic   [NTWRK_SZ_W-1:0]  ntwrkb_sz_wdata;
 
-    //Ready logic
+    //Network size tracking
+    logic          [NUM_CONNS-1:0] ntwrk_sz_vld; //Register for tracking which network sizes are valid
+    logic                          ntwrk_sz_search_start;
+    logic                          ntwrk_sz_search_done;
+    logic                          ntwrk_sz_search_active;
+    logic                          ntwrk_sz_search_active_r;
+    logic    [NTWRK_ID_W-1:0] ntwrk_sz_search_addr;
+
+    logic   [NTWRK_SZ_W-1:0]  ntwrk_max_sz[NUM_NTWRKS];
+    logic        [NUM_NTWRKS-1:0]  ntwrk_max_sz_gt;
+    logic        [NUM_NTWRKS-1:0]  ntwrk_max_sz_gt_prev;
+    
+
+    //Ready logic, we have to backpressure whenever we get a new point until we can update all tables with this new connection as needed
+    //TODO - See if we can pipeline this better and not backpressure as frequently, can we read old point data out and still use it?
     assign read_in_point = points_in_vld && points_in_rdy;
     always_comb begin
         if(read_in_point_r) begin //Can't read in next point after the last read
@@ -89,9 +123,17 @@ module point_ntwrk #(
         end
     end
 
+    //Point to network table should be updated anytime a new network is created or merged or we are connecting the point to an existing network
+    assign pointa_ntwrk_wr_en   = point_ntwrk_action == NEW || remap_ntwrk_action == WR_A || remap_ntwrk_action == MERGE;
+    assign pointb_ntwrk_wr_en   = point_ntwrk_action == NEW || remap_ntwrk_action == WR_B || remap_ntwrk_action == MERGE;
+    assign pointa_ntwrk_wr_addr = (remap_ntwrk_action == WR_A || remap_ntwrk_action == MERGE) ? lookupa_orig_point : pointa_in_r; 
+    assign pointb_ntwrk_wr_addr = (remap_ntwrk_action == WR_B || remap_ntwrk_action == MERGE) ? lookupb_orig_point : pointb_in_r; 
+    assign pointa_ntwrk_wr_data = remap_ntwrk_action == WR_A ? lookupb_ntwrk : max_ntwrk_id;
+    assign pointb_ntwrk_wr_data = remap_ntwrk_action == WR_B ? lookupa_ntwrk : max_ntwrk_id;
+
     mdpram #(
         .DEPTH(NUM_POINTS),
-        .WIDTH($clog2(NUM_CONNS)),
+        .WIDTH(NTWRK_ID_W),
         .RD_LAT(1),
         .NUM_RD(2),
         .NUM_WR(2)
@@ -99,9 +141,9 @@ module point_ntwrk #(
         .clk   (clk),
         .rst_n (rst_n),
 
-        .raddr ({pointa_in, pointb_in}),
+        .raddr ({pointa_in,     pointb_in}),
         .ren   ({points_in_vld, points_in_vld}),
-        .rdata ({ntwrka_lu_id, ntwrkb_lu_id}),
+        .rdata ({ntwrka_lu_id,  ntwrkb_lu_id}),
 
         .waddr ({pointa_ntwrk_wr_addr, pointb_ntwrk_wr_addr}),
         .wen   ({pointa_ntwrk_wr_en, pointb_ntwrk_wr_en}),
@@ -113,8 +155,15 @@ module point_ntwrk #(
         pointb_in_r          <= pointb_in;
         max_ntwrk_id         <= (point_ntwrk_action == NEW || remap_ntwrk_action == MERGE) ? max_ntwrk_id+1 : max_ntwrk_id; 
         read_in_point_r      <= read_in_point;
+        point_ntwrk_started  <= !point_ntwrk_started ? read_in_point : point_ntwrk_started;
+        point_ntwrk_finished <= point_ntwrk_started ? !points_in_vld : point_ntwrk_finished;
         
         if(!rst_n) begin
+            pointa_in_r          <= '0;
+            pointb_in_r          <= '0;
+            max_ntwrk_id         <= '0;
+            read_in_point_r      <= '0;
+            point_ntwrk_started  <= '0;
             max_ntwrk_id         <= 'd1; //0 network id is reserved for invalid network id
         end
     end
@@ -195,8 +244,8 @@ module point_ntwrk #(
     //Table contains a linked list for network remapping
     //TODO - Collapse linked lists with more than 2 nodes to speed up search time
     mdpram #(
-        .DEPTH(NUM_CONNS),
-        .WIDTH($clog2(NUM_CONNS)),
+        .DEPTH(NUM_CONNS+1), //0 is reserved so we need one extra entry in memory to handle worse number of networks
+        .WIDTH(NTWRK_ID_W),
         .RD_LAT(1),
         .NUM_RD(2),
         .NUM_WR(2)
@@ -212,5 +261,120 @@ module point_ntwrk #(
         .wen   ({lookupa_wen,   lookupb_wen}),
         .wdata ({lookupa_wdata, lookupb_wdata})
     );
+
+    //Read port a is used to do all single network size updates/reads, Port b is used to read out second size for a merge and for final size readout
+    assign ntwrka_sz_ren   =  remap_ntwrk_action == WR_A || remap_ntwrk_action == WR_B || remap_ntwrk_action == MERGE;
+    assign ntwrka_sz_raddr =  (remap_ntwrk_action == MERGE || remap_ntwrk_action == WR_B) ? lookupa_ntwrk : lookupb_ntwrk;
+    assign ntwrkb_sz_ren   =  remap_ntwrk_action == MERGE || ntwrk_sz_search_active;
+    assign ntwrkb_sz_raddr =  ntwrk_sz_search_active ? ntwrk_sz_search_addr : lookupb_ntwrk;
+
+    always_ff @(posedge clk) begin
+        ntwrka_sz_ren_r      <= ntwrka_sz_ren;
+        ntwrkb_sz_ren_r      <= ntwrkb_sz_ren;
+        max_ntwrk_id_r       <= max_ntwrk_id;
+        remap_ntwrk_action_r <= remap_ntwrk_action;
+        ntwrka_sz_raddr_r    <= ntwrka_sz_raddr;
+        ntwrkb_sz_raddr_r    <= ntwrkb_sz_raddr;
+
+        if (!rst_n) begin
+            ntwrka_sz_ren_r      <= 1'b0;
+            ntwrkb_sz_ren_r      <= 1'b0;
+            max_ntwrk_id_r       <= '0;
+            remap_ntwrk_action_r <= IGNORE;
+            ntwrka_sz_raddr_r    <= '0;
+            ntwrkb_sz_raddr_r    <= '0;
+        end
+    end
+
+    assign ntwrka_sz_wen   = point_ntwrk_action == NEW;
+    assign ntwrka_sz_waddr = max_ntwrk_id;
+    assign ntwrka_sz_wdata = 'd2;
+
+    always_ff @(posedge clk) begin
+        for(int i=0; i<NUM_CONNS+1; i++) begin
+            if(~rst_n) begin
+                ntwrk_sz_vld[i] <= 1'b0;
+            end else if((point_ntwrk_action == NEW && i[NTWRK_ID_W-1:0] == max_ntwrk_id) || (remap_ntwrk_action_r == MERGE && i[NTWRK_ID_W-1:0] == max_ntwrk_id_r)) begin
+                ntwrk_sz_vld[i] <= 1'b1;
+            end else if(remap_ntwrk_action_r == MERGE && (i[NTWRK_ID_W-1:0] == ntwrka_sz_raddr_r || i[NTWRK_ID_W-1:0] == ntwrkb_sz_raddr_r)) begin
+                ntwrk_sz_vld[i] <= 1'b0;
+            end else begin
+                ntwrk_sz_vld[i] <= ntwrk_sz_vld[i];
+            end
+        end
+    end
+
+    assign ntwrkb_sz_wen   = ntwrka_sz_ren_r || ntwrkb_sz_ren_r && !ntwrk_sz_search_active_r;
+    assign ntwrkb_sz_waddr = remap_ntwrk_action_r == MERGE ? max_ntwrk_id_r                    : ntwrka_sz_raddr_r;
+    assign ntwrkb_sz_wdata = remap_ntwrk_action_r == MERGE ? ntwrka_sz_rdata + ntwrkb_sz_rdata : ntwrka_sz_rdata + 'd1;
+
+    //Table contains a list of memory sizes, need 2 read ports to read out when merging networks.
+    //TODO - One of the write ports could probably be optimized away as we only really use it in 
+    //       the event that a merge is followed on the next cycle by NEW as on that cycle we have to 
+    //       write sizes for two different networks.
+    mdpram #(
+        .DEPTH(NUM_CONNS+1), //0 is reserved so we need one extra entry in memory to handle worse number of networks
+        .WIDTH(NTWRK_SZ_W),
+        .RD_LAT(1),
+        .NUM_RD(2),
+        .NUM_WR(2)
+    ) ntwrk_sz_table (
+        .clk   (clk),
+        .rst_n (rst_n),
+
+        .raddr ({ntwrka_sz_raddr, ntwrkb_sz_raddr}),
+        .ren   ({ntwrka_sz_ren,   ntwrkb_sz_ren}),
+        .rdata ({ntwrka_sz_rdata, ntwrkb_sz_rdata}),
+
+        .waddr ({ntwrka_sz_waddr, ntwrkb_sz_waddr}),
+        .wen   ({ntwrka_sz_wen,   ntwrkb_sz_wen}),
+        .wdata ({ntwrka_sz_wdata, ntwrkb_sz_wdata})
+    );
+    
+    //Network size search logic, we start once there are no more new points and all remapping, size tables updates are done
+    assign ntwrk_sz_search_start = point_ntwrk_finished && !remap_active && !ntwrkb_sz_wen;
+    assign ntwrk_sz_search_done  = ntwrk_sz_search_addr == NUM_CONNS+1;
+    assign ntwrk_sz_search_active = ntwrk_sz_search_start && !ntwrk_sz_search_done;
+    always_ff @(posedge clk) begin
+        ntwrk_sz_search_active_r <= ntwrk_sz_search_active;
+        ntwrk_sz_search_addr <= (ntwrk_sz_search_start && !ntwrk_sz_search_done) ? ntwrk_sz_search_addr + 'd1 : ntwrk_sz_search_addr;
+
+        if(!rst_n) begin
+            ntwrk_sz_search_active_r   <= 1'b0;
+            ntwrk_sz_search_addr       <= 'b0;
+        end
+    end
+
+    //Simple max insert sorter for tracking largest network sizes
+    //NOTE - This could generate a nasty rats nest of wires for large output networks but since 
+    //       we only sort 3 at the moment this should be reasonable to synthesize
+    //       Alternative more scalable solution would be similar to the ins_sorter block used for conns
+    generate
+        for(genvar i=0; i<NUM_NTWRKS; i++) begin
+            assign ntwrk_max_sz_gt[i]           = ntwrkb_sz_rdata > ntwrk_max_sz[i];
+            if(i == 0) begin
+                assign ntwrk_max_sz_gt_prev[i]  = 1'b0;
+            end else begin
+                assign ntwrk_max_sz_gt_prev[i]  = |ntwrk_max_sz_gt[i-1:0];
+            end
+        end
+    endgenerate
+    
+    always_ff @(posedge clk) begin
+        for(int i=0; i<NUM_NTWRKS; i++) begin
+            if(!rst_n) begin
+                ntwrk_max_sz[i]    <= 'd2;
+            end else if (ntwrk_sz_search_active_r && ntwrk_sz_vld[ntwrkb_sz_raddr_r]) begin
+                if(ntwrk_max_sz_gt[i] && !ntwrk_max_sz_gt_prev[i]) begin //First index where size is greater so we insert into this register
+                    ntwrk_max_sz[i]    <= ntwrkb_sz_rdata;
+                end else if(ntwrk_max_sz_gt[i] && ntwrk_max_sz_gt_prev[i]) begin //Data needs to be shifted down
+                    ntwrk_max_sz[i] <= ntwrk_max_sz[i-1];
+                end
+            end
+        end
+    end
+
+    assign ntwrk_sz       = ntwrk_max_sz;
+    assign ntwrk_sz_final = ntwrk_sz_search_done;
 
 endmodule
