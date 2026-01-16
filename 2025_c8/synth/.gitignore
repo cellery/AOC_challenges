@@ -1,0 +1,7 @@
+#Vivado files and reports
+vivado*.jou
+vivado*.log
+*.log
+build
+*.txt
+.Xil/
