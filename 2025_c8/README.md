@@ -1,11 +1,10 @@
 # AOC 2025 Challenge 8
 
-- [ AOC 2025 Challenge 8](2025_c8/README.md)
-- 
-This project contains a python solution for both parts of the challenge. I've also created a RTL solution for the first part of this question. Please refer to [Summary](docs/Summary.pdf)  for a more detailed breakdown of the RTL project. See below sections on how to run the test bench and synthesize the module.
+- [ AOC 2025 Challenge 8](2025_c8/)
+This project contains a python solution for both parts of the challenge. I've also created a RTL solution for the first part of this question. Please refer to [Summary](docs/Summary.pdf) for a more detailed breakdown of the RTL project and the testbench. See below sections on how to run the test bench and synthesize the module.
 
 ## Prerequisites
-Here's a list of various tool versions I used to run the simulation and synthesis. I would recommend matching this but not necessarily required, see below Setup Environment section on how to setup your environment.
+Here's a list of various tool versions I used to run the simulation and synthesis. I would recommend matching these versions but not necessarily required, see below Setup Environment section on how to setup your environment.
 - Ubuntu 22.04 LTS
 - Python 3.12.3 
 - Verilator 5.043 devel rev v5.042-142-g8130fed77
