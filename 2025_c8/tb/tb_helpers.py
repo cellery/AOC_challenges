@@ -8,6 +8,31 @@ from solution import *
 #Cocotb imports
 import cocotb
 
+#TODO - make this a parameter we pass in
+TEST_STIMULUS = "../misc/test_stimulus_002" #If test stimulus folder is not found then all stimulus will be randomly generated
+
+def generate_files():
+    #Try and find all test stimulus if we can, otherwise generate on the fly
+    if os.path.exists(TEST_STIMULUS) :
+        stim_dir = os.path.abspath(TEST_STIMULUS)
+        points_file = os.path.join(stim_dir, "points.txt")
+        if not os.path.isfile(points_file):
+            cocotb.log.error(f"points.txt does not exist in test stimulus folder: {stim_dir}.\n Please provide valid points.txt file in folder or clear TEST_STIMULUS global variable")
+        
+        conns_file = os.path.join(stim_dir, "conns.txt")
+        sorted_file = os.path.join(stim_dir, "sorted.txt")
+        network_file = os.path.join(stim_dir, "network.txt")
+        answer_file = os.path.join(stim_dir, "answer.txt")
+        if not os.path.isfile(conns_file) or not os.path.isfile(sorted_file) or not os.path.isfile(network_file) or not os.path.isfile(answer_file) :
+            cocotb.log.info(f"Generating connections files...")
+            connections = generate_conn_files(points_file, conns_file, sorted_file, int(get_define("NUM_CONNS")))
+            networks = generate_network_file(conns_file, network_file, connections)
+            generate_answer_file(answer_file, int(get_define("NUM_NTWRKS")), networks)
+    else:
+        cocotb.log.error(f"{test_name} does not support auto generated points, please provide a test stimulus folder in TEST_STIMULUS global variable")
+
+    return points_file, conns_file, sorted_file, network_file, answer_file
+
 def generate_conn_files(points_file, conns_file, sorted_file, max_conns):
     with open(points_file, 'r') as file:
         cfile = open(conns_file, 'w')
