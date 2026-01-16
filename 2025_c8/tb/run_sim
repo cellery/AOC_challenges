@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-sim_quick}"
+
+case "$mode" in
+  sim_quick|sim_full)
+    ;;
+  -h|--help)
+    echo "Usage: $0 [sim_quick|sim_full]"
+    exit 0
+    ;;
+  *)
+    echo "ERROR: Unknown mode '$mode' (expected sim_quick or sim_full)" >&2
+    echo "Usage: $0 [sim_quick|sim_full]" >&2
+    exit 2
+    ;;
+esac
+
+# Environment variables consumed by the Makefile
+export SYNTH_MODE="$mode"
+
+# Example knobs (customize to your flow)
+if [[ "$mode" == "sim_quick" ]]; then
+  export DIM_W="17"
+  export NUM_POINTS="20"
+  export NUM_CONNS="10"
+  export NUM_NTWRKS="3"
+  export TEST_STIMULUS="../misc/test_stimulus_001"
+else
+  export DIM_W="17"
+  export NUM_POINTS="1000"
+  export NUM_CONNS="1000"
+  export NUM_NTWRKS="3"
+  export TEST_STIMULUS="../misc/test_stimulus_002"
+fi
+
+echo "Running make for $mode"
+
+# Call make clean first to resimesize the module
+make clean
+exec make

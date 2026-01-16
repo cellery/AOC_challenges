@@ -14,7 +14,7 @@ COCOTB_TOPLEVEL = top
 COCOTB_TEST_MODULES = tb
 
 # Verilator simulation defines
-EXTRA_ARGS += +define+DIM_W=17 +define+NUM_POINTS=100 +define+NUM_CONNS=100 +define+NUM_NTWRKS=3 
+EXTRA_ARGS += +define+DIM_W=$(DIM_W) +define+NUM_POINTS=$(NUM_POINTS) +define+NUM_CONNS=$(NUM_CONNS) +define+NUM_NTWRKS=$(NUM_NTWRKS) +define+TEST_STIMULUS=$(TEST_STIMULUS)
 
 #Other verilator options
 EXTRA_ARGS += --trace --trace-structs --structs-packed 
@@ -24,3 +24,9 @@ EXTRA_ARGS += --trace --trace-structs --structs-packed
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+clean::
+	rm -f ../misc/test_stimulus_[0-9]*/answer.txt \
+	      ../misc/test_stimulus_[0-9]*/conns.txt \
+	      ../misc/test_stimulus_[0-9]*/network.txt \
+		  ../misc/test_stimulus_[0-9]*/sorted.txt

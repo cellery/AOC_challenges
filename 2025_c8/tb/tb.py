@@ -20,7 +20,7 @@ async def aoc_2025_chal8(dut):
     #Get test name for printing, TODO - is there a built in feature in cocotb to get this already?
     test_name = inspect.stack()[0].function
 
-    points_file, conns_file, sorted_file, network_file, answer_file = generate_files()
+    points_file, conns_file, sorted_file, network_file, answer_file = generate_files(get_define('TEST_STIMULUS') )
 
     cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
 

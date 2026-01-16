@@ -15,15 +15,15 @@ from tb_global import *
 import cocotb
 
 #TODO - make this a parameter we pass in
-TEST_STIMULUS = "../misc/test_stimulus_002" #If test stimulus folder is not found then all stimulus will be randomly generated
+#TEST_STIMULUS = "../misc/test_stimulus_001" #If test stimulus folder is not found then all stimulus will be randomly generated
 
-def generate_files():
+def generate_files(test_stimulus_dir):
     #Try and find all test stimulus if we can, otherwise generate on the fly
-    if os.path.exists(TEST_STIMULUS) :
-        stim_dir = os.path.abspath(TEST_STIMULUS)
+    if os.path.exists(test_stimulus_dir) :
+        stim_dir = os.path.abspath(test_stimulus_dir)
         points_file = os.path.join(stim_dir, "points.txt")
         if not os.path.isfile(points_file):
-            cocotb.log.error(f"points.txt does not exist in test stimulus folder: {stim_dir}.\n Please provide valid points.txt file in folder or clear TEST_STIMULUS global variable")
+            cocotb.log.error(f"points.txt does not exist in test stimulus folder: {stim_dir}.\n ")
         
         conns_file = os.path.join(stim_dir, "conns.txt")
         sorted_file = os.path.join(stim_dir, "sorted.txt")
@@ -35,7 +35,7 @@ def generate_files():
             networks = generate_network_file(conns_file, network_file, connections)
             generate_answer_file(answer_file, int(get_define("NUM_NTWRKS")), networks)
     else:
-        cocotb.log.error(f"{test_name} does not support auto generated points, please provide a test stimulus folder in TEST_STIMULUS global variable")
+        cocotb.log.error(f"{test_name} does not support auto generated points, please provide a test stimulus folder in {stim_dir}")
 
     return points_file, conns_file, sorted_file, network_file, answer_file
 
@@ -65,9 +65,6 @@ def generate_conn_files(points_file, conns_file, sorted_file, max_conns):
             points.append(new_point)
 
             point_id += 1
-
-            if(point_id >= max_conns):
-                break
 
         #Write sorted connections to file
         for conn in connections:
