@@ -22,23 +22,21 @@ module dist_calc #(
     output logic                           done
 );
 
-    localparam DIST_W = (DIM_W+1)*2+2;
+    localparam DIST_W     = (DIM_W+1)*2+2;
+    localparam MEM_RD_LAT = 2;
 
-    logic [DIM_W-1:0]                 wr_locs_r [3];
+    logic [DIM_W-1:0]                 wr_locs_r [3][MEM_RD_LAT];
     logic [$clog2(NUM_POINTS)-1:0]    wr_point_ind;
-    logic [$clog2(NUM_POINTS)-1:0]    wr_point_ind_r;
-    logic [$clog2(NUM_POINTS)-1:0]    wr_point_ind_r2;
+    logic [$clog2(NUM_POINTS)-1:0]    wr_point_ind_r [MEM_RD_LAT+1];
     logic                             wr_point_inc;
     logic                             wr_point_rdy;
 
     logic [DIM_W-1:0]                 rd_locs [3];
     logic [$clog2(NUM_POINTS)-1:0]    rd_point_ind; 
-    logic [$clog2(NUM_POINTS)-1:0]    rd_point_ind_r; 
-    logic [$clog2(NUM_POINTS)-1:0]    rd_point_ind_r2; 
+    logic [$clog2(NUM_POINTS)-1:0]    rd_point_ind_r [MEM_RD_LAT+1]; 
     logic                             rd_point_rst;
     logic                             rd_point_inc;
-    logic                             rd_point_inc_r;
-    logic                             rd_point_inc_r2;
+    logic                             rd_point_inc_r [MEM_RD_LAT+1];
 
     logic [DIM_W-1:0]                 dists   [3];
     logic [DIM_W-1:0]                 dists_r [3];
@@ -55,13 +53,13 @@ module dist_calc #(
 
     always_ff @(posedge clk) begin
         wr_point_ind    <= wr_point_inc ? wr_point_ind+1 : wr_point_ind;
-        wr_point_ind_r  <= wr_point_ind;
-        wr_point_ind_r2 <= wr_point_ind_r;
         rd_point_ind    <= wr_point_inc ? '0 : (rd_point_inc ? rd_point_ind+1 : rd_point_ind);
-        rd_point_ind_r  <= rd_point_ind;
-        rd_point_ind_r2 <= rd_point_ind_r;
-        rd_point_inc_r  <= rd_point_inc;
-        rd_point_inc_r2 <= rd_point_inc_r;
+
+        for(int i=0; i<MEM_RD_LAT+1; i++) begin
+            wr_point_ind_r[i] <= (i==0) ? wr_point_ind : wr_point_ind_r[i-1];
+            rd_point_ind_r[i] <= (i==0) ? rd_point_ind : rd_point_ind_r[i-1];
+            rd_point_inc_r[i] <= (i==0) ? rd_point_inc : rd_point_inc_r[i-1];
+        end
 
         if(!rst_n) begin
             wr_point_ind  <= '0;
@@ -71,10 +69,15 @@ module dist_calc #(
 
     //Use delayed version of wr_points to match delay of rd_points from memory 
     always_ff @(posedge clk) begin
-        wr_locs_r <= locs;
+        for(int i=0; i<3; i++) begin
+            for(int j=0; j<MEM_RD_LAT; j++) begin
+                wr_locs_r[i][j] <= (j==0) ? locs[i] : wr_locs_r[i][j-1];
+            end
+        end
+        //wr_locs_r <= locs;
 
         if(!rst_n) begin
-            wr_locs_r  <= '{default: '0};
+            wr_locs_r  <= '{default: '{default: '0}};
         end
     end
 
@@ -83,7 +86,7 @@ module dist_calc #(
             sdpram #(
                 .DEPTH(NUM_POINTS), 
                 .WIDTH(DIM_W),
-                .RD_LAT(1),
+                .RD_LAT(MEM_RD_LAT),
                 .WR_MODE(0)
             ) loc_memory (
                 .clk  (clk),
@@ -97,15 +100,15 @@ module dist_calc #(
                 .wen  (locs_vld && locs_rdy),
                 .wdata(locs[i])
             );
-            assign dists[i] = wr_locs_r[i] > rd_locs[i] ? wr_locs_r[i] - rd_locs[i] : rd_locs[i] - wr_locs_r[i];
+            assign dists[i] = wr_locs_r[i][MEM_RD_LAT-1] > rd_locs[i] ? wr_locs_r[i][MEM_RD_LAT-1] - rd_locs[i] : rd_locs[i] - wr_locs_r[i][MEM_RD_LAT-1];
         end
     endgenerate
 
 
     assign conn_i.distance = {{DIST_W-DIM_W{1'b0}},dists_r[0]}**2 + {{DIST_W-DIM_W{1'b0}},dists_r[1]}**2 + {{DIST_W-DIM_W{1'b0}},dists_r[2]}**2;
-    assign conn_i.pointa   = rd_point_ind_r2;
-    assign conn_i.pointb   = wr_point_ind_r2;
-    assign conn_i_vld      = rd_point_inc_r2; 
+    assign conn_i.pointa   = rd_point_ind_r[MEM_RD_LAT];
+    assign conn_i.pointb   = wr_point_ind_r[MEM_RD_LAT];
+    assign conn_i_vld      = rd_point_inc_r[MEM_RD_LAT]; 
 
     always_ff @(posedge clk) begin
         conn     <= conn_i;
