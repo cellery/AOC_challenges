@@ -1,9 +1,15 @@
 import os
 import sys
 
+#Original SW functions that are useful for some file generation
 target_dir = os.path.abspath('../sw')
 sys.path.append(target_dir)
 from solution import *
+
+#Global helper functions useful for all testbenches
+target_dir = os.path.abspath('../../common')
+sys.path.append(target_dir)
+from tb_global import *
 
 #Cocotb imports
 import cocotb
