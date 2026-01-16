@@ -1,8 +1,8 @@
 package aoc_types_pkg;
 
-    parameter DIM_W = `DIM_W;
-    parameter NUM_POINTS = `NUM_POINTS;
-    parameter NUM_CONNS  = `NUM_CONNS;
+    localparam DIM_W = `DIM_W;
+    localparam NUM_POINTS = `NUM_POINTS;
+    localparam NUM_CONNS  = `NUM_CONNS;
 
     typedef struct packed {
         logic [((DIM_W+1)*2+2)-1:0]    distance;

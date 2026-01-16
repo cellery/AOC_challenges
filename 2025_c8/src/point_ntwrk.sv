@@ -291,7 +291,7 @@ module point_ntwrk #(
     assign ntwrka_sz_wdata = 'd2;
 
     always_ff @(posedge clk) begin
-        for(int i=0; i<NUM_CONNS+1; i++) begin
+        for(int i=0; i<NUM_CONNS; i++) begin
             if(~rst_n) begin
                 ntwrk_sz_vld[i] <= 1'b0;
             end else if((point_ntwrk_action == NEW && i[NTWRK_ID_W-1:0] == max_ntwrk_id) || (remap_ntwrk_action_r == MERGE && i[NTWRK_ID_W-1:0] == max_ntwrk_id_r)) begin
@@ -367,7 +367,7 @@ module point_ntwrk #(
             end else if (ntwrk_sz_search_active_r && ntwrk_sz_vld[ntwrkb_sz_raddr_r]) begin
                 if(ntwrk_max_sz_gt[i] && !ntwrk_max_sz_gt_prev[i]) begin //First index where size is greater so we insert into this register
                     ntwrk_max_sz[i]    <= ntwrkb_sz_rdata;
-                end else if(ntwrk_max_sz_gt[i] && ntwrk_max_sz_gt_prev[i]) begin //Data needs to be shifted down
+                end else if(ntwrk_max_sz_gt[i] && ntwrk_max_sz_gt_prev[i] && i!=0) begin //Data needs to be shifted down
                     ntwrk_max_sz[i] <= ntwrk_max_sz[i-1];
                 end
             end

@@ -30,10 +30,6 @@ module sort_node #(
     logic                            freeze_r;
     logic                            frozen;
     logic                            unfreeze;
-    logic                            pending_data;
-
-    conn_t                           pending_conn;
-    logic                            pending_conn_vld;
 
     always_comb begin
         if(SORT_OP == 0) begin
@@ -121,7 +117,6 @@ module sort_node #(
             forward_mode <= 1'b0;
             freeze_r <= 1'b0;
             frozen <= 1'b0;
-            pending_data <= 1'b0;
         end
     end
 
