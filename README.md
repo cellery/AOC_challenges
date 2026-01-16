@@ -3,4 +3,4 @@ Repo for work on the Advent of Code challenges. Please refer to link below for m
 
 ## Links to each challenge solution
 
-- [AOC 2025 Challenge 8](2025_c8/README.md)
+- [AOC 2025 Challenge 8](2025_c8/)

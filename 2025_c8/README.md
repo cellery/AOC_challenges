@@ -1,6 +1,5 @@
 # AOC 2025 Challenge 8
 
-- [ AOC 2025 Challenge 8](2025_c8/)
 This project contains a python solution for both parts of the challenge. I've also created a RTL solution for the first part of this question. Please refer to [Summary](docs/Summary.pdf) for a more detailed breakdown of the RTL project and the testbench. See below sections on how to run the test bench and synthesize the module.
 
 ## Prerequisites
@@ -26,14 +25,14 @@ The testbench environment I have uses Verilator as the simulator and cocotb for 
 2) git clone git@github.com:cellery/AOC_challenges.git
 3) cd AOC_challenges/2025_c8
 4) ./setup.sh
-5) source venv/bin/activate
 ```
 
 ## Run a testcase
-There is only currently one monolithic testcase for the entire design. Simple cd into the tb folder and run make to launch the testcase
+There is currently only one monolithic testcase for the entire design. Simply cd into the tb folder and run make to launch the testcase. 
 ```
-1) cd tb
-2) make
+1) source venv/bin/activate
+2) cd tb
+3) make
 ```
 If the test is running properly you should see similar output to the following:
 ```
