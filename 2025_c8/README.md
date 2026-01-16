@@ -28,29 +28,31 @@ The testbench environment I have uses Verilator as the simulator and cocotb for 
 ```
 
 ## Run a testcase
-There is currently only one monolithic testcase for the entire design. Simply cd into the tb folder and run make to launch the testcase. 
+There are currently two tests you can run, a sim_quick (default) and sim_full. The sim_quick will run with the small example used in the original puzzle and the sim_full will run with the full input from the challenge. See instructions below on how to run each test
 ```
 1) source venv/bin/activate
 2) cd tb
-3) make
+3) ./run_sim [<sim_quick,sim_full>]
 ```
-If the test is running properly you should see similar output to the following:
+If the test is running properly you should see similar output to the following for sim_full:
 ```
 ...
- 58660.00ns INFO     test                               All points read in!
- 58660.00ns INFO     test                               Final answer: 4264. Actual answer: 4264
- 58660.00ns INFO     test                               cocotb finished
- 58660.00ns INFO     cocotb.regression                  tb.aoc_2025_chal8 passed
- 58660.00ns INFO     cocotb.regression                  **************************************************************************************
-                                                        ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
-                                                        **************************************************************************************
-                                                        ** tb.aoc_2025_chal8              PASS       58660.00           1.26      46431.75  **
-                                                        **************************************************************************************
-                                                        ** TESTS=1 PASS=1 FAIL=0 SKIP=0              58660.00           1.26      46376.79  **
-                                                        **************************************************************************************
+5035590.00ns INFO     test                               Network conn 999 (477, 526) with action NEW
+5035590.00ns INFO     test                               Network status: finished check_ntwrk
+5035590.00ns INFO     test                               Overall network block status: Status.DONE
+5045620.00ns INFO     test                               Final answer: 105952. Actual answer: 105952
+5045620.00ns INFO     test                               cocotb finished
+5045620.00ns INFO     cocotb.regression                  tb.aoc_2025_chal8 passed
+5045620.00ns INFO     cocotb.regression                  **************************************************************************************
+                                                         ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                         **************************************************************************************
+                                                         ** tb.aoc_2025_chal8              PASS     5045620.00         463.87      10877.21  **
+                                                         **************************************************************************************
+                                                         ** TESTS=1 PASS=1 FAIL=0 SKIP=0            5045620.00         463.87      10877.18  **
+                                                         **************************************************************************************
 
 ```
-
+>Due to the nature of each test setting top level defines as inputs to Verilator the makefile flow doesn't know when it needs to reelaborate the module for a test so currently I force it to reelaborate every time which is not ideal. Will improve that in the future.
 
 ## Run synthesis
 For synthesis I am using the Vivado toolchain to do some resource and timing estimates for the design. The script generates 3 different configurations of the module and you can specify which one you want to synthesize with tclargs. Here's an example of synthesizing the design and generating reports.
