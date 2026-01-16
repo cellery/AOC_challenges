@@ -23,12 +23,12 @@ module point_ntwrk #(
     localparam NTWRK_SZ_W = $clog2(NUM_CONNS) + 1;
 
     //Points to new network id when we create one
-    logic [NTWRK_ID_W-1:0] max_ntwrk_id;
-    logic [NTWRK_ID_W-1:0] max_ntwrk_id_r;
+    logic         [NTWRK_ID_W-1:0] max_ntwrk_id;
+    logic         [NTWRK_ID_W-1:0] max_ntwrk_id_r;
 
     //Point -> Network signals 
-    logic [NTWRK_ID_W-1:0]  ntwrka_lu_id;
-    logic [NTWRK_ID_W-1:0]  ntwrkb_lu_id;
+    logic         [NTWRK_ID_W-1:0] ntwrka_lu_id;
+    logic         [NTWRK_ID_W-1:0] ntwrkb_lu_id;
     logic [$clog2(NUM_POINTS)-1:0] pointa_in_r;
     logic [$clog2(NUM_POINTS)-1:0] pointb_in_r;
     logic                          read_in_point;
@@ -36,10 +36,10 @@ module point_ntwrk #(
 
     logic                          pointa_ntwrk_wr_en;
     logic [$clog2(NUM_POINTS)-1:0] pointa_ntwrk_wr_addr;
-    logic [NTWRK_ID_W-1:0]  pointa_ntwrk_wr_data;
+    logic         [NTWRK_ID_W-1:0] pointa_ntwrk_wr_data;
     logic                          pointb_ntwrk_wr_en;
     logic [$clog2(NUM_POINTS)-1:0] pointb_ntwrk_wr_addr;
-    logic [NTWRK_ID_W-1:0]  pointb_ntwrk_wr_data;
+    logic         [NTWRK_ID_W-1:0] pointb_ntwrk_wr_data;
 
 
     //Point -> Network signals
@@ -50,25 +50,25 @@ module point_ntwrk #(
     //Network lookup/remap table signals
     logic                          lookupa_active;
     logic                          lookupa_en;
-    logic [NTWRK_ID_W-1:0]  lookupa_raddr;
-    logic [NTWRK_ID_W-1:0]  lookupa_rdata;
-    logic [NTWRK_ID_W-1:0]  lookupa_ntwrk;
+    logic         [NTWRK_ID_W-1:0] lookupa_raddr;
+    logic         [NTWRK_ID_W-1:0] lookupa_rdata;
+    logic         [NTWRK_ID_W-1:0] lookupa_ntwrk;
     logic                          lookupa_wen;
-    logic [NTWRK_ID_W-1:0]  lookupa_waddr;
-    logic [NTWRK_ID_W-1:0]  lookupa_wdata;
+    logic         [NTWRK_ID_W-1:0] lookupa_waddr;
+    logic         [NTWRK_ID_W-1:0] lookupa_wdata;
     logic [$clog2(NUM_POINTS)-1:0] lookupa_orig_point;
-    logic [NTWRK_ID_W-1:0]  lookupa_orig_ntwrk;
+    logic         [NTWRK_ID_W-1:0] lookupa_orig_ntwrk;
 
     logic                          lookupb_active;
     logic                          lookupb_en;
-    logic [NTWRK_ID_W-1:0]  lookupb_raddr;
-    logic [NTWRK_ID_W-1:0]  lookupb_rdata;
-    logic [NTWRK_ID_W-1:0]  lookupb_ntwrk;
+    logic         [NTWRK_ID_W-1:0] lookupb_raddr;
+    logic         [NTWRK_ID_W-1:0] lookupb_rdata;
+    logic         [NTWRK_ID_W-1:0] lookupb_ntwrk;
     logic                          lookupb_wen;
-    logic [NTWRK_ID_W-1:0]  lookupb_waddr;
-    logic [NTWRK_ID_W-1:0]  lookupb_wdata;
+    logic         [NTWRK_ID_W-1:0] lookupb_waddr;
+    logic         [NTWRK_ID_W-1:0] lookupb_wdata;
     logic [$clog2(NUM_POINTS)-1:0] lookupb_orig_point;
-    logic [NTWRK_ID_W-1:0]  lookupb_orig_ntwrk;
+    logic         [NTWRK_ID_W-1:0] lookupb_orig_ntwrk;
 
     //Remap signals, active while we're doing lookups for a/b networks
     logic                          remap_active;
@@ -77,23 +77,23 @@ module point_ntwrk #(
     ntwrk_cmd_id_t                 remap_ntwrk_action_r;
 
     //Network size table signals
-    logic   [NTWRK_ID_W-1:0]  ntwrka_sz_raddr;
-    logic   [NTWRK_ID_W-1:0]  ntwrka_sz_raddr_r;
+    logic   [NTWRK_ID_W-1:0]       ntwrka_sz_raddr;
+    logic   [NTWRK_ID_W-1:0]       ntwrka_sz_raddr_r;
     logic                          ntwrka_sz_ren;
     logic                          ntwrka_sz_ren_r;
-    logic   [NTWRK_SZ_W-1:0]  ntwrka_sz_rdata;
-    logic   [NTWRK_ID_W-1:0]  ntwrka_sz_waddr;
+    logic   [NTWRK_SZ_W-1:0]       ntwrka_sz_rdata;
+    logic   [NTWRK_ID_W-1:0]       ntwrka_sz_waddr;
     logic                          ntwrka_sz_wen;
-    logic   [NTWRK_SZ_W-1:0]  ntwrka_sz_wdata;
+    logic   [NTWRK_SZ_W-1:0]       ntwrka_sz_wdata;
  
-    logic   [NTWRK_ID_W-1:0]  ntwrkb_sz_raddr;
-    logic   [NTWRK_ID_W-1:0]  ntwrkb_sz_raddr_r;
+    logic   [NTWRK_ID_W-1:0]       ntwrkb_sz_raddr;
+    logic   [NTWRK_ID_W-1:0]       ntwrkb_sz_raddr_r;
     logic                          ntwrkb_sz_ren;
     logic                          ntwrkb_sz_ren_r;
-    logic   [NTWRK_SZ_W-1:0]  ntwrkb_sz_rdata;
-    logic   [NTWRK_ID_W-1:0]  ntwrkb_sz_waddr;
+    logic   [NTWRK_SZ_W-1:0]       ntwrkb_sz_rdata;
+    logic   [NTWRK_ID_W-1:0]       ntwrkb_sz_waddr;
     logic                          ntwrkb_sz_wen;
-    logic   [NTWRK_SZ_W-1:0]  ntwrkb_sz_wdata;
+    logic   [NTWRK_SZ_W-1:0]       ntwrkb_sz_wdata;
 
     //Network size tracking
     logic          [NUM_CONNS-1:0] ntwrk_sz_vld; //Register for tracking which network sizes are valid
@@ -101,11 +101,11 @@ module point_ntwrk #(
     logic                          ntwrk_sz_search_done;
     logic                          ntwrk_sz_search_active;
     logic                          ntwrk_sz_search_active_r;
-    logic    [NTWRK_ID_W-1:0] ntwrk_sz_search_addr;
+    logic         [NTWRK_ID_W-1:0] ntwrk_sz_search_addr;
 
-    logic   [NTWRK_SZ_W-1:0]  ntwrk_max_sz[NUM_NTWRKS];
-    logic        [NUM_NTWRKS-1:0]  ntwrk_max_sz_gt;
-    logic        [NUM_NTWRKS-1:0]  ntwrk_max_sz_gt_prev;
+    logic         [NTWRK_SZ_W-1:0] ntwrk_max_sz[NUM_NTWRKS];
+    logic         [NUM_NTWRKS-1:0] ntwrk_max_sz_gt;
+    logic         [NUM_NTWRKS-1:0] ntwrk_max_sz_gt_prev;
     
 
     //Ready logic, we have to backpressure whenever we get a new point until we can update all tables with this new connection as needed
@@ -143,7 +143,7 @@ module point_ntwrk #(
 
         .raddr ({pointa_in,     pointb_in}),
         .ren   ({points_in_vld, points_in_vld}),
-        .rdata ({ntwrka_lu_id,  ntwrkb_lu_id}),
+        .rdata ('{0: ntwrka_lu_id, 1:ntwrkb_lu_id}),
 
         .waddr ({pointa_ntwrk_wr_addr, pointb_ntwrk_wr_addr}),
         .wen   ({pointa_ntwrk_wr_en, pointb_ntwrk_wr_en}),
@@ -255,7 +255,7 @@ module point_ntwrk #(
 
         .raddr ({lookupa_raddr,  lookupb_raddr}),
         .ren   ({lookupa_active, lookupb_active}),
-        .rdata ({lookupa_rdata,  lookupb_rdata}),
+        .rdata ('{0:lookupa_rdata, 1:lookupb_rdata}),
 
         .waddr ({lookupa_waddr, lookupb_waddr}),
         .wen   ({lookupa_wen,   lookupb_wen}),
@@ -324,7 +324,7 @@ module point_ntwrk #(
 
         .raddr ({ntwrka_sz_raddr, ntwrkb_sz_raddr}),
         .ren   ({ntwrka_sz_ren,   ntwrkb_sz_ren}),
-        .rdata ({ntwrka_sz_rdata, ntwrkb_sz_rdata}),
+        .rdata ('{0:ntwrka_sz_rdata, 1:ntwrkb_sz_rdata}),
 
         .waddr ({ntwrka_sz_waddr, ntwrkb_sz_waddr}),
         .wen   ({ntwrka_sz_wen,   ntwrkb_sz_wen}),

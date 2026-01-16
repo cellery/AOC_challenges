@@ -24,6 +24,9 @@ module top #(
     localparam ANSWER_SZ = $clog2(NUM_CONNS)*3;
     localparam NTWRK_SZ  = $clog2(NUM_CONNS)+1;
 
+    //Running counter for time calculations
+    logic                       [63:0] time_cntr;
+
     //Dist calculator nets
     logic [DIM_W-1:0]                  locs [3];
     conn_t                             conn;
@@ -50,6 +53,14 @@ module top #(
 
     //Answer logic
     logic [ANSWER_SZ-1:0] answer_i;
+
+    always_ff @(posedge clk) begin
+        time_cntr <= time_cntr+1;
+
+        if(!rst_n) begin
+            time_cntr <= '0;
+        end
+    end
 
     assign locs[0] = xloc;
     assign locs[1] = yloc;
