@@ -66,6 +66,9 @@ def generate_conn_files(points_file, conns_file, sorted_file, max_conns):
 
             point_id += 1
 
+            if(point_id >= int(get_define("NUM_POINTS"))):
+                break
+
         #Write sorted connections to file
         for conn in connections:
             sfile.write(f"{conn}\n")

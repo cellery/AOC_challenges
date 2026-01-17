@@ -1,6 +1,6 @@
 # AOC 2025 Challenge 8
 
-This project contains a python solution for both parts of the challenge. I've also created a RTL solution for the first part of this question. Please refer to [Summary](docs/Summary.pdf) for a more detailed breakdown of the RTL project and the testbench. See below sections on how to run the test bench and synthesize the module.
+This project contains a python solution for both parts of the challenge. I've also created a RTL solution for the first part of this question. Please refer to [Summary](docs/AOC 2025c8.pdf) for a more detailed breakdown of the RTL project and the testbench. See below sections on how to run the test bench and synthesize the module.
 
 ## Prerequisites
 Here's a list of various tool versions I used to run the simulation and synthesis. I would recommend matching these versions but not necessarily required, see below Setup Environment section on how to setup your environment.
@@ -59,6 +59,7 @@ For synthesis I am using the Vivado toolchain to do some resource and timing est
 ```
 cd synth
 #You can pass in either synth_small, synth_medium, synth_full, or all
+source /path/to/vivado/2025.2/settings64.sh
 vivado -mode batch -source run_vivado.tcl -tclargs -runs synth_small
 ```
 After the script finishes you can checkout both the utilization report and the timing report in the build folder.
