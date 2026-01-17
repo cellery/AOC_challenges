@@ -28,11 +28,11 @@ The testbench environment I have uses Verilator as the simulator and cocotb for 
 ```
 
 ## Run a testcase
-There are currently two tests you can run, a sim_quick (default) and sim_full. The sim_quick will run with the small example used in the original puzzle and the sim_full will run with the full input from the challenge. See instructions below on how to run each test
+There are currently three tests you can run, a sim_quick (default), sim_medium and sim_full. The sim_quick will run with the small example used in the original puzzle and the sim_full will run with the full input from the challenge. See instructions below on how to run each test
 ```
 1) source venv/bin/activate
 2) cd tb
-3) ./run_sim [<sim_quick,sim_full>]
+3) ./run_sim [<sim_quick,sim_medium,sim_full>]
 ```
 If the test is running properly you should see similar output to the following for sim_full:
 ```
