@@ -1,6 +1,7 @@
 //Multi dual port RAM, parameterized number of read and write ports.
 //TODO - Make flexible for any number of R+W combinations, for now just support 2R+2W
 
+
 module mdpram #(
     parameter DEPTH = 1000,
     parameter WIDTH = 17,
